@@ -1,0 +1,18 @@
+files you must find and place in here to build:
+
+0Harmony.dll
+Il2CppInterop.Runtime.dll
+BepInEx.Core.dll
+BepInEx.Unity.IL2CPP.dll
+Il2Cppmscorlib.dll
+Menus.dll
+Quantum.Deterministic.dll
+Quantum.Engine.dll
+Quantum.Log.dll
+Quantum.Simulation.dll
+Quantum.Unity.dll
+Unity.TextMeshPro.dll
+UnityEngine.CoreModule.dll
+UnityEngine.UI.dll
+View_Entities.dll
+lib-names.txt
