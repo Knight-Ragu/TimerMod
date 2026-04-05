@@ -19,6 +19,7 @@ using View_Entities;
 // using static Quantum.QuantumGame;
 using Menus;
 using TMPro;
+using CustomUIRendering_Access;
 // using Il2CppSystem;
 
 namespace TimerMod;
@@ -151,12 +152,12 @@ public class TimerMod : BasePlugin
     internal static HoverbikeModel? bikeModel = null;
 
     internal static int TrySetupUI = 0;
-    internal static Text RaceText = null;
-    internal static Text SumText = null;
+    internal static ASCIILabel RaceText = null;
+    internal static ASCIILabel SumText = null;
     internal static GameObject resetObj = null;
     internal static double Now = 0.0;
 
-    internal static Color textColor = Color.white;
+    internal static Color textColor = new(0.7f, 0.7f, 0.7f, 1.0f);
 
     internal static double fastestRace = 0.0;
     internal static double fastestSum = 0.0;
@@ -176,18 +177,18 @@ public class TimerMod : BasePlugin
             {
                 try 
                 {
-                    var hud = GameObject.Find("HUD_Canvas(Clone)").transform;
-                    Text txt = null;
+                    var hud = GameObject.Find("Scoreboard_Scorebox(Clone)").transform;
+                    ASCIILabel txt = null;
 
                     foreach (var child in hud)
                     {
                         if (child.TryCast<Transform>() is Transform tra)
                         {
                             try {
-                                if (tra.TryGetComponent<Text>(out var agh) && agh.text.Contains('$'))
+                                if (tra.name == "NameLabel" && tra.TryGetComponent<ASCIILabel>(out var agh))
                                 {
-                                    Log.LogInfo("Found a match!");
                                     txt = agh;
+                                    Log.LogInfo("Found a match!");
                                 }
                             } 
                             catch (Exception ex)
@@ -206,17 +207,30 @@ public class TimerMod : BasePlugin
                         var obj = UnityEngine.Object.Instantiate(txt.transform.gameObject, hud);
                         var obj2 = UnityEngine.Object.Instantiate(txt.transform.gameObject, hud);
                         
-                        obj.transform.localPosition = new Vector3(331, 45, 0);
-                        obj2.transform.localPosition = new Vector3(331, 0, 0);
+                        obj.transform.localPosition = new Vector3(170, -48, 0);
+                        obj2.transform.localPosition = new Vector3(170, -98, 0);
 
-                        RaceText = obj.GetComponent<Text>();
-                        SumText = obj2.GetComponent<Text>();
+                        obj.transform.localScale = new Vector3(2.4f, 1.97f, 1.0f);
+                        obj2.transform.localScale = new Vector3(2.35f, 1.93f, 1.0f);
 
-                        RaceText.text = "00:00.00";
-                        SumText.text = "00:00.00";
+                        RaceText = obj.GetComponent<ASCIILabel>();
+                        SumText = obj2.GetComponent<ASCIILabel>();
 
-                        textColor = RaceText.color;
-                        Log.LogInfo($"Saved: {textColor}");
+                        RaceText.Text = "00:00.00";
+                        SumText.Text = "00:00.00";
+
+                        RaceText.freeColorMode = true;
+                        SumText.freeColorMode = true;
+                        RaceText._freeColorMode = true;
+                        SumText._freeColorMode = true;
+
+                        RaceText.gameObject.active = false;
+                        SumText.gameObject.active = false;
+                        RaceText.gameObject.active = true;
+                        SumText.gameObject.active = true;
+
+                        RaceText.freeColor = textColor;
+                        SumText.freeColor = textColor;
                     }
                     else
                     {
@@ -255,21 +269,29 @@ public class TimerMod : BasePlugin
 
         var sum = RaceSum();
 
-        SumText.text = $"{TimeSpan.FromSeconds(sum):mm\\:ss\\.ff}";
-        SumText.color = TextColor(fastestSum > sum);
+        SumText.Text = $"{TimeSpan.FromSeconds(sum):mm\\:ss\\.ff}";
+        SumText.freeColor = TextColor(fastestSum > sum);
 
         if (RaceStart is double t)
         {
-            RaceText.text = $"{TimeSpan.FromSeconds(Now - t):mm\\:ss\\.ff}";
-            RaceText.color = textColor;
+            RaceText.Text = $"{TimeSpan.FromSeconds(Now - t):mm\\:ss\\.ff}";
+            RaceText.freeColor = textColor;
         }
         else if (RaceTimes.Count >= 1 && RaceTimes[^1] is (double start, double end))
         {
             var lastRaceTime = end - start;
-            RaceText.text = $"{TimeSpan.FromSeconds(lastRaceTime):mm\\:ss\\.ff}";
+            RaceText.Text = $"{TimeSpan.FromSeconds(lastRaceTime):mm\\:ss\\.ff}";
 
-            RaceText.color = TextColor(fastestRace > lastRaceTime);
+            RaceText.freeColor = TextColor(fastestRace > lastRaceTime);
         }
+
+        RaceText.Resized();
+        SumText.Resized();
+
+        RaceText.gameObject.active = false;
+        SumText.gameObject.active = false;
+        RaceText.gameObject.active = true;
+        SumText.gameObject.active = true;
     }
 
     internal static Color TextColor(bool fast)
@@ -277,7 +299,7 @@ public class TimerMod : BasePlugin
         if (fast)
         {
             float sin = Mathf.Sin((float)Now * 3.6f) * 0.375f + 0.62f;
-            return new Color(textColor.r * sin, textColor.g, textColor.b);
+            return new Color(textColor.r * sin, textColor.g + (1.0f - sin) * 0.25f, textColor.b * sin);
         }
         else
             return textColor;
