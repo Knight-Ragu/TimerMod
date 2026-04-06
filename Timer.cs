@@ -1,31 +1,19 @@
 ﻿using HarmonyLib;
-// using Quantum;
-// using HarmonyLib.Tools;
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using UnityEngine.SceneManagement;
-// using Photon.Deterministic;
-// using View_Entities;
-// using Menus;
-// using CustomUIRendering_Access;
-// using Quantum_Game;
-// using Il2CppSystem.Linq;
 using MelonLoader;
-// using TMPro;
-// using System.Linq;
 using Il2CppQuantum;
 using Il2CppPhoton.Deterministic;
 using Il2CppMenus;
-// using Il2CppSystem;
 using Il2CppTMPro;
 using Il2CppView_Entities;
 using Il2CppQuantum_Game;
-using Il2CppCustomUIRendering_Access;
-// using Il2Cpp;
-// using Il2CppMono.Unity;
+using Il2CppView_Equipment;
+using Il2CppView_Main;
 
 [assembly: MelonInfo(typeof(TimerMod.Timer), "TimerMod", "0.0.1", "Knight-Ragu", null)]
 [assembly: MelonGame("Videocult", "Airframe")]
@@ -101,11 +89,10 @@ namespace TimerMod
         }
 
         internal static HoverbikeModel? bikeModel = null;
-        internal static List<int> pathBlockers = [];
 
         internal static int TrySetupUI = 0;
-        internal static ASCIILabel RaceText = null;
-        internal static ASCIILabel SumText = null;
+        internal static Text RaceText = null;
+        internal static Text SumText = null;
         internal static GameObject resetObj = null;
         internal static double Now = 0.0;
 
@@ -130,15 +117,15 @@ namespace TimerMod
                     {
                         try 
                         {
-                            var hud = GameObject.Find("Scoreboard_Scorebox(Clone)").transform;
-                            ASCIILabel txt = null;
+                            var hud = GameObject.Find("HUD_Canvas(Clone)").transform;
+                            Text txt = null;
 
                             foreach (var child in hud)
                             {
                                 if (child.TryCast<Transform>() is Transform tra)
                                 {
                                     try {
-                                        if (tra.name == "NameLabel" && tra.TryGetComponent<ASCIILabel>(out var agh))
+                                        if (tra.TryGetComponent<Text>(out var agh) && agh.text.Contains('$'))
                                         {
                                             txt = agh;
                                             Log.Msg("Found a match!");
@@ -160,28 +147,17 @@ namespace TimerMod
                                 var obj = UnityEngine.Object.Instantiate(txt.transform.gameObject, hud);
                                 var obj2 = UnityEngine.Object.Instantiate(txt.transform.gameObject, hud);
                                 
-                                obj.transform.localPosition = new Vector3(170, -48, 0);
-                                obj2.transform.localPosition = new Vector3(170, -98, 0);
+                                obj.transform.localPosition = new Vector3(331, 45, 0);
+                                obj2.transform.localPosition = new Vector3(331, 0, 0);
 
-                                obj.transform.localScale = new Vector3(2.4f, 1.97f, 1.0f);
-                                obj2.transform.localScale = new Vector3(2.35f, 1.93f, 1.0f);
+                                RaceText = obj.GetComponent<Text>();
+                                SumText = obj2.GetComponent<Text>();
 
-                                RaceText = obj.GetComponent<ASCIILabel>();
-                                SumText = obj2.GetComponent<ASCIILabel>();
+                                RaceText.text = "00:00.00";
+                                SumText.text = "00:00.00";
 
-                                RaceText.Text = "00:00.00";
-                                SumText.Text = "00:00.00";
-
-                                RaceText.freeColorMode = true;
-                                SumText.freeColorMode = true;
-
-                                RaceText.gameObject.SetActive(false);
-                                SumText.gameObject.SetActive(false);
-                                RaceText.gameObject.SetActive(true);
-                                SumText.gameObject.SetActive(true);
-
-                                RaceText.freeColor = textColor;
-                                SumText.freeColor = textColor;
+                                textColor = RaceText.color;
+                                Log.Msg($"Saved: {textColor}");
                             }
                             else
                             {
@@ -220,29 +196,21 @@ namespace TimerMod
 
                 var sum = RaceSum();
 
-                SumText.Text = $"{System.TimeSpan.FromSeconds(sum):mm\\:ss\\.ff}";
-                SumText.freeColor = TextColor(fastestSum > sum);
+                SumText.text = $"{System.TimeSpan.FromSeconds(sum):mm\\:ss\\.ff}";
+                SumText.color = TextColor(fastestSum > sum);
 
                 if (RaceStart is double t)
                 {
-                    RaceText.Text = $"{System.TimeSpan.FromSeconds(Now - t):mm\\:ss\\.ff}";
-                    RaceText.freeColor = textColor;
+                    RaceText.text = $"{System.TimeSpan.FromSeconds(Now - t):mm\\:ss\\.ff}";
+                    RaceText.color = textColor;
                 }
                 else if (RaceTimes.Count >= 1 && RaceTimes[^1] is (double start, double end))
                 {
                     var lastRaceTime = end - start;
-                    RaceText.Text = $"{System.TimeSpan.FromSeconds(lastRaceTime):mm\\:ss\\.ff}";
+                    RaceText.text = $"{System.TimeSpan.FromSeconds(lastRaceTime):mm\\:ss\\.ff}";
 
-                    RaceText.freeColor = TextColor(fastestRace > lastRaceTime);
+                    RaceText.color = TextColor(fastestRace > lastRaceTime);
                 }
-
-                RaceText.Resized();
-                SumText.Resized();
-
-                RaceText.gameObject.SetActive(false);
-                SumText.gameObject.SetActive(false);
-                RaceText.gameObject.SetActive(true);
-                SumText.gameObject.SetActive(true);
             }
         }
 
@@ -251,7 +219,7 @@ namespace TimerMod
             if (fast)
             {
                 float sin = Mathf.Sin((float)Now * 3.6f) * 0.375f + 0.62f;
-                return new Color(textColor.r * sin, textColor.g + (1.0f - sin) * 0.25f, textColor.b * sin);
+                return new Color(textColor.r * sin, textColor.g, textColor.b);
             }
             else
                 return textColor;
@@ -287,13 +255,6 @@ namespace TimerMod
             {
                 RaceStart = Now;
                 Log.Msg("RaceStart set to Now!");
-
-                foreach(var blocker in GameObject.FindObjectsOfType<QPrototypePathBlocker>())
-                {
-                    Log.Msg(blocker.name);
-
-                    pathBlockers.Add(int.Parse(blocker.name.Split('.')[1]));
-                }
             }
         }
 
@@ -526,31 +487,6 @@ namespace TimerMod
             public static void Postfix(Frame f, EntityRef playerEntity, PlayerRef playerRef, Transform3D spawnTransform)
             {   
                 Log.Msg($"{playerEntity.Index}, {playerEntity}");
-
-                Il2CppSystem.Collections.Generic.List<EntityRef> refs = new();
-                f.GetAllEntityRefs(refs);
-
-                try
-                {
-                    foreach (var blocker in pathBlockers)
-                    {
-                        foreach(var r in refs)
-                            if (r.Index == blocker)
-                                f.Destroy(r);
-                    }
-                }
-                catch (System.Exception ex)
-                {
-                    Log.Error(ex.ToString());
-                }
-
-                // if (!f.SystemsAll.Contains(new RemovePathBlockers()))
-                // {
-                //     var system = new RemovePathBlockers();
-                //     Log.Msg("Adding: " + system.ToString());
-                //     f.SystemsAll.AddItem(system);
-                //     f._systemsAll.AddItem(system);
-                // }
 
                 foreach(var sys in f.SystemsAll)
                 {
