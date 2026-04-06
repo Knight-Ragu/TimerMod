@@ -1,5 +1,4 @@
-﻿// using BepInEx;
-using BepInEx.Logging;
+﻿using BepInEx.Logging;
 using BepInEx.Unity.IL2CPP;
 using HarmonyLib;
 using System;
@@ -13,14 +12,13 @@ using System.IO;
 using System.Reflection;
 using UnityEngine.SceneManagement;
 using Photon.Deterministic;
-// using Quantum_HoverBikeShared;
-// using Quantum.Prototypes;
 using View_Entities;
-// using static Quantum.QuantumGame;
 using Menus;
 using TMPro;
 using CustomUIRendering_Access;
-// using Il2CppSystem;
+using Quantum_Game;
+using Il2CppSystem.Linq;
+using Il2CppSystem.Security.Cryptography;
 
 namespace TimerMod;
 
@@ -31,16 +29,11 @@ public class TimerMod : BasePlugin
 
     const string folderName = "times";
 
-    // internal const int oftenity = 40;
-    // internal static int countDown = 0;
-
     internal static new ManualLogSource Log;
 
     internal static bool enableTimer = true;
 
-    // internal static DateTime GameStart = DateTime.Now;
     internal static double? RaceStart = null;
-    // internal static DateTime RaceEnd = DateTime.Now;
     internal static List<(double start, double end)> RaceTimes = [];
 
     internal static double RaceSum()
@@ -53,17 +46,6 @@ public class TimerMod : BasePlugin
         return sum;
     }
 
-    // internal static Harmony harmony;
-
-    // private static readonly MethodInfo GetBoosts =
-    //     typeof(HoverBikePrototype).GetMethod("get_boosts", BindingFlags.Public | BindingFlags.Instance);
-
-    // private static readonly MethodInfo GetBoostsPatch =
-    //     typeof(TimerMod).GetMethod("Boost", BindingFlags.Static | BindingFlags.Public);
-    
-    // private static readonly MethodInfo QuitPatch =
-    //     typeof(TimerMod).GetMethod("Quitting", BindingFlags.Static | BindingFlags.Public);
-
     public override void Load()
     {
         // Plugin startup logic
@@ -75,13 +57,6 @@ public class TimerMod : BasePlugin
             HarmonyFileLog.Enabled = true;
 
             Harmony.CreateAndPatchAll(typeof(TimerMod));
-
-            // harmony = new("test_harmony_idk");
-
-            // if (GetBoosts == null)
-            //     Log.LogError("Unable to patch HoverBikePrototype.get_boosts - Method not found!");
-            // else
-            //     harmony.Patch(GetBoosts, null, new HarmonyMethod(GetBoostsPatch));
         }
         catch(Exception ex) {
             Log.LogError(ex);
@@ -119,27 +94,6 @@ public class TimerMod : BasePlugin
         }
     }
 
-    // [HarmonyPatch(typeof(DeterministicSession), "Destroy")]
-    // [HarmonyPrefix]
-    public static void Quitting()
-    {
-        Log.LogInfo("Exiting!");
-    }
-
-    // [HarmonyPatch(typeof(QuantumGame), MethodType.Constructor, [typeof(System.IntPtr)], [ArgumentType.Normal])]
-    // [HarmonyPatch(typeof(QuantumGame), MethodType.Constructor, [typeof(QuantumGameStartParameters)], [ArgumentType.Ref])]
-    // [HarmonyPatch(typeof(QuantumGame), MethodType.Constructor, [typeof(StartParameters)], [ArgumentType.Normal])]
-    // [HarmonyPatch(typeof(QuantumGame), MethodType.Constructor, [typeof(IResourceManager), typeof(IAssetSerializer), typeof(ICallbackDispatcher), typeof(IEventDispatcher)], [ArgumentType.Normal, ArgumentType.Normal, ArgumentType.Normal, ArgumentType.Normal])]
-    
-    // [HarmonyPatch(typeof(QuantumGame), "CreateFrame")]
-    // [HarmonyPatch(typeof(QuantumGame), "OnGameStart")]
-    // [HarmonyPrefix]
-    public static void GameStart()
-    {
-        Log.LogInfo("ASDAGA");
-        NotRandom();
-    }
-
 
     [HarmonyPatch(typeof(EngineSounds), "Instantiate")]
     [HarmonyPostfix]
@@ -150,6 +104,7 @@ public class TimerMod : BasePlugin
     }
 
     internal static HoverbikeModel? bikeModel = null;
+    internal static List<int> pathBlockers = [];
 
     internal static int TrySetupUI = 0;
     internal static ASCIILabel RaceText = null;
@@ -320,6 +275,7 @@ public class TimerMod : BasePlugin
     public static void OnLog(Il2CppSystem.Object message)
     {
         var msg = message.ToString();
+        // BikeRespawnSystem.debugDraw = true;
 
         // NotRandom();
 
@@ -337,6 +293,13 @@ public class TimerMod : BasePlugin
         {
             RaceStart = Now;
             Log.LogInfo("RaceStart set to Now!");
+
+            foreach(var blocker in GameObject.FindObjectsOfType<QPrototypePathBlocker>())
+            {
+                Log.LogInfo(blocker.name);
+
+                pathBlockers.Add(int.Parse(blocker.name.Split('.')[1]));
+            }
         }
         else if (msg.Contains("crossed the finish line"))
         {
@@ -556,87 +519,218 @@ public class TimerMod : BasePlugin
         // }
     }
 
-    public static void NotRandom()
-    {
-        var old = UnityEngine.Random.seed;
 
-        int seed = 10;
-        // UnityEngine.Random.State state = new()
-        // {
-        //     s0 = seed,
-        //     s1 = seed,
-        //     s2 = seed,
-        //     s3 = seed
-        // };
-
-        // UnityEngine.Random.set_state_Injected(ref state);
-        if (old != 10) UnityEngine.Random.InitState(seed);
-
-        Log.LogInfo($"Seed was {old}, but is now {UnityEngine.Random.seed}!");
-    }
-
-    /* [HarmonyPatch(typeof(UnityEngine.Random), "Range", [typeof(int), typeof(int)])]
-    [HarmonyPatch(typeof(UnityEngine.Random), "RandomRange", [typeof(int), typeof(int)])]
-    [HarmonyPatch(typeof(UnityEngine.Random), "RandomRangeInt", [typeof(int), typeof(int)])]
+    [HarmonyPatch(typeof(BikeRespawnSystem), "SpawnBike")]
     [HarmonyPostfix]
-    public static void RandInt(int __result)
-    {
-        Log.LogInfo($"RandInt: {__result}");
-    }
+    public static void DisableAllRacingInhibitors(Frame f, EntityRef playerEntity, PlayerRef playerRef, Transform3D spawnTransform)
+    {   
+        Log.LogInfo($"{playerEntity.Index}, {playerEntity.Raw}, {playerEntity.ToString()}");
 
-    [HarmonyPatch(typeof(UnityEngine.Random), "Range", [typeof(float), typeof(float)])]
-    [HarmonyPatch(typeof(UnityEngine.Random), "RandomRange", [typeof(float), typeof(float)])]
-    [HarmonyPostfix]
-    public static void RandFloat(float __result)
-    {
-        Log.LogInfo($"RandFloat: {__result}");
-    } */
+        Il2CppSystem.Collections.Generic.List<EntityRef> refs = new();
+        f.GetAllEntityRefs(refs);
 
-    // [HarmonyPatch(typeof(HoverBikeShared), "LeaningBikeRotation", [typeof(Transform3D), typeof(HoverBike)], [ArgumentType.Ref, ArgumentType.Ref])]
-    // [HarmonyPatch(typeof(HoverBikeShared), "LeaningBikeRotation", [typeof(Transform3D), typeof(HoverBike)], [ArgumentType.Pointer, ArgumentType.Pointer])]
-    // [HarmonyPostfix]
-    public static void Boosts(ref HoverBike hoverBike/* , FPQuaternion __result */)
-    {
-        hoverBike.boostCounter = new FP(10000);
-        hoverBike.boosts = 10000;
+        try
+        {
+            foreach (var blocker in pathBlockers)
+            {
+                foreach(var r in refs)
+                    if (r.Index == blocker)
+                        f.Destroy(r);
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Log.LogError(ex.ToString());
+        }
 
-        // Log.LogInfo(__result.AsEuler.ToString());
-    }
-
-    public static void MapScalePostfix(ref int __result)
-    {
-        Log.LogInfo($"get_boosts: {__result}");
-        __result = 10000;
-    }
-
-    // [HarmonyPatch(typeof(BikeRespawnSystem), "SpawnBike")]
-    // [HarmonyPatch(typeof(BikeRespawnSystem), "TryFindDynamicBikeRespawnPos")]
-    // [HarmonyPatch(typeof(BikeRespawnSystem), "GetNoBikeZoneBikeSpawnpos")]
-    // [HarmonyPatch(typeof(BikeRespawnSystem), "DespawnAllUnoccupiedBikesAndRespawnNewOnes")]
-    // [HarmonyPatch(typeof(BikeRespawnSystem), "TrySpawnReplacementVehicle", [typeof(Frame), typeof(EntityRef)])]
-    // [HarmonyPatch(typeof(BikeRespawnSystem), "TrySpawnReplacementVehicle", [typeof(Frame), typeof(RespawnSystem.Filter)], [ArgumentType.Normal, ArgumentType.Ref])]
-
-    // [HarmonyPatch(typeof(HoverBikeSystem), "Locomote")]
-
-    // [HarmonyPrefix]
-    public static void NoBike(Frame f)
-    {
-        // List<EntityRef> l = new();
-        // f.GetAllEntityRefs(l);
-
-        // for (int i = l.Count - 1; i >= 0; i--)
+        // if (!f.SystemsAll.Contains(new RemovePathBlockers()))
         // {
-            
+        //     var system = new RemovePathBlockers();
+        //     Log.LogInfo("Adding: " + system.ToString());
+        //     f.SystemsAll.AddItem(system);
+        //     f._systemsAll.AddItem(system);
         // }
 
-        foreach (var c in f.GetComponentIterator<HoverBike>())
+        foreach(var sys in f.SystemsAll)
         {
-            var comp = c.Component;
-            comp.boosts = 999;
-            
-            c.Component = comp;
-        }        
+            var name = sys.GetIl2CppType().Name;
 
-        // return false;
+            var enuu = sys.ChildSystems.GetEnumerator();
+            for (int i = 0; i < sys.ChildSystems.Count(); i++)
+            {
+                var littleSys = enuu.Current;
+                var littleName = littleSys.GetIl2CppType().Name;
+
+                Log.LogInfo("Child: " + littleName);
+            }
+
+            if (
+                name == "PoliceCoordinatorSystem"
+                || name == "PoliceHelicopterSystem"
+                || name == "PoliceGunmanSystem"
+
+                || name.Contains("PickupSpawnSystem")
+                || name.Contains("SpecialPickupSpawnSystem")
+            ) {
+                if (enableTimer)
+                {
+                    f.SystemDisable(sys);
+                    Log.LogInfo("Disabled " + name + " | " + sys._startEnabled);
+                } else
+                {
+                    f.SystemEnable(sys.GetIl2CppType());
+                    Log.LogInfo("Enabled " + name + " | " + sys._startEnabled);
+                }
+            } else
+            {
+                // Log.LogInfo(name);
+            }
+        }
     }
+
+
+
+    [HarmonyPatch(typeof(Il2CppSystem.Random), "GenerateSeed")]
+    [HarmonyPostfix]
+    public static void RandGen(Il2CppSystem.Random __instance)
+    {
+        __instance._inext = 0;
+        __instance._inextp = 0;
+
+        for (int i = 0; i < __instance._seedArray.Length; i++)
+        {
+            __instance._seedArray[i] = 0;
+        }
+        
+        // Log.LogInfo("RANDOM!!! Gen");
+    }
+
+    [HarmonyPatch(typeof(Il2CppSystem.Random), "GenerateGlobalSeed")]
+    [HarmonyPostfix]
+    public static void RandGenGlob(Il2CppSystem.Random __instance)
+    {
+        __instance._inext = 0;
+        __instance._inextp = 0;
+
+        for (int i = 0; i < __instance._seedArray.Length; i++)
+        {
+            __instance._seedArray[i] = 0;
+        }
+
+        // Log.LogInfo("RANDOM!!! GenGlob");
+    } 
+
+    [HarmonyPatch(typeof(Il2CppSystem.Random), "GetSampleForLargeRange")]
+    [HarmonyPostfix]
+    public static void RandGetSampLrgRng(Il2CppSystem.Random __instance)
+    {
+        __instance._inext = 0;
+        __instance._inextp = 0;
+
+        for (int i = 0; i < __instance._seedArray.Length; i++)
+        {
+            __instance._seedArray[i] = 0;
+        }
+
+        // Log.LogInfo("RANDOM!!! GetSampLrgRng");
+    } 
+
+    [HarmonyPatch(typeof(Il2CppSystem.Random), "InternalSample")]
+    [HarmonyPostfix]
+    public static void RandInternalSample(Il2CppSystem.Random __instance)
+    {
+        __instance._inext = 0;
+        __instance._inextp = 0;
+
+        for (int i = 0; i < __instance._seedArray.Length; i++)
+        {
+            __instance._seedArray[i] = 0;
+        }
+
+        // Log.LogInfo("RANDOM!!! InternalSample");
+    } 
+
+    [HarmonyPatch(typeof(Il2CppSystem.Random), "Next", [typeof(int), typeof(int)])]
+    [HarmonyPostfix]
+    public static void RandNext1(Il2CppSystem.Random __instance)
+    {
+        __instance._inext = 0;
+        __instance._inextp = 0;
+
+        for (int i = 0; i < __instance._seedArray.Length; i++)
+        {
+            __instance._seedArray[i] = 0;
+        }
+
+        // Log.LogInfo("RANDOM!!! Next1");
+    } 
+
+    [HarmonyPatch(typeof(Il2CppSystem.Random), "Next", [typeof(int)])]
+    [HarmonyPostfix]
+    public static void RandNext2(Il2CppSystem.Random __instance)
+    {
+        __instance._inext = 0;
+        __instance._inextp = 0;
+
+        for (int i = 0; i < __instance._seedArray.Length; i++)
+        {
+            __instance._seedArray[i] = 0;
+        }
+
+        // Log.LogInfo("RANDOM!!! Next2");
+    } 
+
+    [HarmonyPatch(typeof(Il2CppSystem.Random), "Next", [])]
+    [HarmonyPostfix]
+    public static void RandNext3(Il2CppSystem.Random __instance)
+    {
+        __instance._inext = 0;
+        __instance._inextp = 0;
+
+        for (int i = 0; i < __instance._seedArray.Length; i++)
+        {
+            __instance._seedArray[i] = 0;
+        }
+
+        // Log.LogInfo("RANDOM!!! Next3");
+    } 
+
+    [HarmonyPatch(typeof(Il2CppSystem.Random), "Sample")]
+    [HarmonyPostfix]
+    public static void RandSample()
+    {
+        // Log.LogInfo("RANDOM!!! Sample");
+    } 
 }
+
+// public class RemovePathBlockers : SystemMainThreadFilter<BikeRespawnSystem.Filter>
+// {
+//     public RemovePathBlockers() {}
+//     public RemovePathBlockers(System.IntPtr pointer) {}
+
+    
+//     public override void Update(Frame f)
+//     {
+//         Il2CppSystem.Collections.Generic.List<EntityRef> refs = new();
+//         f.GetAllEntityRefs(refs);
+
+//         foreach(var r in refs)
+//         {
+//             TimerMod.Log.LogInfo($"ref: {r.Index}");
+//         }
+
+//         try
+//         {
+//             foreach (var blocker in TimerMod.pathBlockers)
+//             {
+//                 foreach(var r in refs)
+//                     if (r.Index == blocker)
+//                         f.Destroy(r);
+//             }
+//         }
+//         catch (System.Exception ex)
+//         {
+//             TimerMod.Log.LogError(ex.ToString());
+//         }
+//     }
+// }
