@@ -23,6 +23,15 @@ namespace TimerMod;
 
 public class Timer : MelonMod
 {
+    private MelonPreferences_Category MultiplayerConfigOptions;
+    private MelonPreferences_Entry<bool> RemoveEstateDoor;
+
+    public override void OnInitializeMelon()
+    {
+        MultiplayerConfigOptions = MelonPreferences.CreateCategory("MultiplayerConfigOptions");
+        RemoveEstateDoor = MultiplayerConfigOptions.CreateEntry<bool>("RemoveEstateDoor", true);
+    }
+    
     const string guid = "knightragu.timermod";
 
     const string folderName = "times";
@@ -511,21 +520,25 @@ public class Timer : MelonMod
             Il2CppSystem.Collections.Generic.List<EntityRef> refs = new();
             f.GetAllEntityRefs(refs);
 
-            try
+            if (RemoveEstateDoor.value == true)
             {
-                foreach(var blocker in GameObject.FindObjectsOfType<QPrototypePathBlocker>())
+                try
                 {
-                    Log.Msg(blocker.name);
-
-                    foreach(var r in refs)
-                        if (r.Index == int.Parse(blocker.name.Split('.')[1]))
-                            f.Destroy(r);
+                    foreach(var blocker in GameObject.FindObjectsOfType<QPrototypePathBlocker>())
+                    {
+                        Log.Msg(blocker.name);
+    
+                        foreach(var r in refs)
+                            if (r.Index == int.Parse(blocker.name.Split('.')[1]))
+                                f.Destroy(r);
+                    }
+                }
+                catch (System.Exception ex)
+                {
+                    Log.Error(ex.ToString());
                 }
             }
-            catch (System.Exception ex)
-            {
-                Log.Error(ex.ToString());
-            }
+            
 
             foreach(var sys in f.SystemsAll)
             {
