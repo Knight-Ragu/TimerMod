@@ -15,6 +15,7 @@ using Il2CppQuantum_Game;
 using Il2CppCustomUIRendering_Access;
 using Il2CppView_Environment;
 using System;
+using System.Linq;
 
 [assembly: MelonInfo(typeof(TimerMod.Timer), "TimerMod", "0.0.1", "Knight-Ragu", null)]
 [assembly: MelonGame("Videocult", "Airframe")]
@@ -25,7 +26,7 @@ public class Timer : MelonMod
 {
     const string guid = "knightragu.timermod";
 
-    const string folderName = "times";
+    const string folderName = "Times";
 
     internal static MelonLogger.Instance Log => Melon<Timer>.Instance.LoggerInstance;
 
@@ -297,9 +298,9 @@ public class Timer : MelonMod
             var (start, end) = RaceTimes[^1];
 
             // Z:\home\knightragu\Documents\Airframe Ultra Playtest 3\Airframe Ultra Playtest\BepInEx\plugins\AddAirToFrame.dll
-            string path = Assembly.GetExecutingAssembly().Location;
-            path = path.Remove(path.LastIndexOf('\\') + 1);
-            path += folderName;
+            string path = ".\\UserData";
+            path += "\\" + folderName;
+            string backup_path = path + "\\Backup";
 
             string model;
 
@@ -309,12 +310,13 @@ public class Timer : MelonMod
                 model = "Nobike";
 
             string mapFile = path + $"\\{SceneManager.GetActiveScene().name} - {model}.txt";
+            string backup_mapFile = backup_path + $"\\{SceneManager.GetActiveScene().name} - {model}.txt";
 
             Log.Msg(mapFile);
 
         TryAgain:
 
-            if (Directory.Exists(path))
+            if (Directory.Exists(path) && Directory.Exists(backup_path))
             {
                 double raceTime = end - start;
                 double sumTime = RaceSum();
@@ -325,6 +327,7 @@ public class Timer : MelonMod
                 if (File.Exists(mapFile))
                 {
                     var times = File.ReadAllLines(mapFile);
+                    File.Copy(mapFile, backup_mapFile, true);
 
                     int i = RaceTimes.Count - 1;
 
@@ -361,14 +364,27 @@ public class Timer : MelonMod
 
                     File.WriteAllLines(mapFile, times);
                 }
+                else if (!File.Exists(mapFile) && File.Exists(backup_mapFile))
+                {
+                    File.Copy(backup_mapFile, mapFile, true);
+                    goto TryAgain;
+                }
                 else
                 {
                     File.WriteAllLines(mapFile, [$"{raceTime}|{sumTime}"]);
+                    File.Copy(mapFile, backup_mapFile, true);
                 }
+            }
+            else if (Directory.Exists(path) && !Directory.Exists(backup_path))
+            {
+                Directory.CreateDirectory(backup_path);
+
+                goto TryAgain;
             }
             else
             {
                 Directory.CreateDirectory(path);
+                Directory.CreateDirectory(backup_path);
 
                 goto TryAgain;
             }
@@ -396,11 +412,11 @@ public class Timer : MelonMod
             Log.Msg($"Game time: {System.TimeSpan.FromSeconds(Now):mm\\:ss\\.ff}");
 
             // Z:\home\knightragu\Documents\Airframe Ultra Playtest 3\Airframe Ultra Playtest\BepInEx\plugins\AddAirToFrame.dll
-            string path = Assembly.GetExecutingAssembly().Location;
-            path = path.Remove(path.LastIndexOf('\\') + 1);
+            string path = "\\UserData\\";
+            //path = path.Remove(path.LastIndexOf('\\') + 1);
             path += folderName;
 
-            string playtimesFile = path + $"\\Playtimes.txt";
+            string playtimesFile = path + "Playtimes.txt";
 
             Log.Msg(playtimesFile);
 
