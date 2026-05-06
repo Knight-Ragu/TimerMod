@@ -16,25 +16,21 @@ class RaceGameModeSystem_CrossedFinishLine_Patch
 
             // Timer.Log.Msg($"Race time: {System.TimeSpan.FromSeconds(Timer.Now - t):mm\\:ss\\.ff}, Total game time: {System.TimeSpan.FromSeconds(Timer.Now):mm\\:ss\\.ff}");
         }
-        else Timer.Log.Error("RaceStart is null..?");
+        else Timer.Log.Error("Already completed race");
         
 
-        if (!Directory.Exists(Timer.DataFolder))
-            Directory.CreateDirectory(Timer.DataFolder);
-        
+        (string directory, string splitsFile) = Timer.GetSplitsFile(SceneManager.GetActiveScene(), Timer.bikeModel);
 
-        string splitsFile = Timer.GetSplitsFile(SceneManager.GetActiveScene(), Timer.bikeModel);
+        if (!Directory.Exists(directory))
+            Directory.CreateDirectory(directory);
 
         if (!File.Exists(splitsFile))
             Timer.CreateNewSplitsFile(splitsFile);
         
-        
         (double sprintStart, double sprintEnd) = Timer.SprintTimes[^1];
-
+        var (wroteToSprint, wroteToSum) = Timer.SaveSplitTime(splitsFile, Timer.SprintTimes.Count - 1, sprintEnd - sprintStart, Timer.SumRaceTime());
         
-        var (writeToSprint, wroteToSum) = Timer.SaveSplitTime(splitsFile, Timer.SprintTimes.Count - 1, sprintEnd - sprintStart, Timer.SumRaceTime());
-        
-        Timer.wasFastestSprint = writeToSprint;
+        Timer.wasFastestSprint = wroteToSprint;
         Timer.wasFastestRaceSum = wroteToSum;
 
         Timer.RaceStart = null;

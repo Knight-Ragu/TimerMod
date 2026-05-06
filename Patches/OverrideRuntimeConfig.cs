@@ -11,16 +11,15 @@ class PhotonController_ChangeSceneAndStartQuantumGameCoroutine_Patch
     {
         if (!Timer.enabled) return;
 
-        Timer.Log.Msg($"RuntimeConfig Seed: {runtimeConfig.Seed}");
-
         var gameSetup = runtimeConfig.gameSetup;
         
-        // runtimeConfig.Seed = -2070715567;
+        if (Timer.ReadSeedFile() is int seed)
+            runtimeConfig.Seed = seed;
 
         gameSetup.police = false;
-        gameSetup.startMoney = 0;
-        gameSetup.respawnMoney = 0;
-        gameSetup.consumableMoney = 0;
+        gameSetup.startMoney = 9999999;
+        gameSetup.respawnMoney = 9999999;
+        gameSetup.consumableMoney = 9999999;
         gameSetup.gameMode = GameMode.RaceGameMode;
         gameSetup.scoreToWin = 99999;
         gameSetup.totalLives = 99999;
@@ -45,6 +44,6 @@ class PhotonController_ChangeSceneAndStartQuantumGameCoroutine_Patch
         //     totalLives = 77,
         // };
 
-        Timer.Log.Msg($"RuntimeConfig: {runtimeConfig.Dump()}");
+        Timer.Log.Msg($"Race Seed: {runtimeConfig.Seed}");
     }
 }

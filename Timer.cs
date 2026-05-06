@@ -49,36 +49,3 @@ public partial class Timer : MelonMod
             return Timer.TextBaseColor;
     }
 }
-
-
-// public class RemovePathBlockers : SystemMainThreadFilter<BikeRespawnSystem.Filter>
-// {
-//     public RemovePathBlockers() {}
-//     public RemovePathBlockers(System.IntPtr pointer) {}
-
-
-//     public override void Update(Frame f)
-//     {
-//         Il2CppSystem.Collections.Generic.List<EntityRef> refs = new();
-//         f.GetAllEntityRefs(refs);
-
-//         foreach(var r in refs)
-//         {
-//             TimerMod.Log.Msg($"ref: {r.Index}");
-//         }
-
-//         try
-//         {
-//             foreach (var blocker in TimerMod.pathBlockers)
-//             {
-//                 foreach(var r in refs)
-//                     if (r.Index == blocker)
-//                         f.Destroy(r);
-//             }
-//         }
-//         catch (System.Exception ex)
-//         {
-//             TimerMod.Log.Error(ex.ToString());
-//         }
-//     }
-// }

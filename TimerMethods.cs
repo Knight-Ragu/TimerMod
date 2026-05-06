@@ -21,10 +21,20 @@ public partial class Timer
     }
 
 
+    internal static int? ReadSeedFile()
+    {
+        var lines = File.ReadAllLines(Timer.SeedFile);
+        if (lines.Length > 0 && int.TryParse(lines[0], out int seed))
+            return seed;
+
+        return null;
+    }
+
+
     internal static void CreateNewSplitsFile(string splitsFile)
         => File.WriteAllLines(splitsFile, ["-|-", "-|-", "-|-", "-|-", "-|-", "-|-", "-|-", "-|-"]);
 
-    internal static string GetSplitsFile(Scene map, HoverbikeModel? bikeModel)
+    internal static (string directory, string file) GetSplitsFile(Scene map, HoverbikeModel? bikeModel)
     {
         string model;
 
@@ -33,10 +43,10 @@ public partial class Timer
         else
             model = "Nobike";
 
-        string splitsFileName = $"\\{SceneManager.GetActiveScene().name} - {model}.txt";
-        string splitsFile = Timer.DataFolder + splitsFileName;
+        string splitsFolderName = $"\\{map.name}";
+        string splitsFileName = $"\\{model}";
 
-        return splitsFile;
+        return (Timer.TimesFolder + splitsFolderName, Timer.TimesFolder + splitsFolderName + splitsFileName);
     }
 
     internal static (bool wroteToSprint, bool wroteToSum) SaveSplitTime(string splitsFile, int index, double sprintTime, double raceTime)
