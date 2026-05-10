@@ -10,7 +10,7 @@ class RaceGameModeSystem_CrossedFinishLine_Patch
 {
     public static void Postfix() // crossed the finish line
     {
-        if (Timer.RaceStart is double t)
+        if (Timer.SprintStart is double t)
         {
             Timer.SprintTimes.Add((t, Timer.Now));
 
@@ -19,20 +19,20 @@ class RaceGameModeSystem_CrossedFinishLine_Patch
         else Timer.Log.Error("Already completed race");
         
 
-        (string directory, string splitsFile) = Timer.GetSplitsFile(SceneManager.GetActiveScene(), Timer.bikeModel);
+        (string directory, string splitsFile) = ReadWrite.GetSplitsFile(SceneManager.GetActiveScene(), Timer.bikeModel);
 
         if (!Directory.Exists(directory))
             Directory.CreateDirectory(directory);
 
         if (!File.Exists(splitsFile))
-            Timer.CreateNewSplitsFile(splitsFile);
+            ReadWrite.CreateNewSplitsFile(splitsFile);
         
         (double sprintStart, double sprintEnd) = Timer.SprintTimes[^1];
-        var (wroteToSprint, wroteToSum) = Timer.SaveSplitTime(splitsFile, Timer.SprintTimes.Count - 1, sprintEnd - sprintStart, Timer.SumRaceTime());
+        var (wroteToSprint, wroteToSum) = ReadWrite.SaveSplitTime(splitsFile, Timer.SprintTimes.Count - 1, sprintEnd - sprintStart, Timer.SumRaceTime());
         
         Timer.wasFastestSprint = wroteToSprint;
         Timer.wasFastestRaceSum = wroteToSum;
 
-        Timer.RaceStart = null;
+        Timer.SprintStart = null;
     }
 }

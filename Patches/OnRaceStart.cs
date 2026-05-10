@@ -10,7 +10,7 @@ public partial class Timer
     {
         public static void Postfix() // RACE START
         {
-            RaceStart = Now;
+            SprintStart = Now;
             Log.Msg("RaceStart set to Now!");
         }
     }

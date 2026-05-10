@@ -15,6 +15,6 @@ class EngineSounds_Instantiate_Patch
     public static void Postfix(HoverbikeModel model)
     {
         Timer.bikeModel = model;
-        Timer.Log.Msg($"Bike Model: {model}");
+        // Timer.Log.Msg($"Bike Model: {model}");
     }
 }

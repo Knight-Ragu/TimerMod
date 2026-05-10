@@ -1,26 +1,59 @@
 using HarmonyLib;
 using Il2CppMenus;
+using Il2CppQuantum;
 using Il2CppTMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using Button = UnityEngine.UI.Button;
 
 namespace TimerMod;
+
+public enum RetryMethod {
+    SameSeed,
+    RandomSeed,
+    InfiniteRandomSeed,
+    RandomQuickstopSeed,
+}
+
+public enum Quickstop {
+    Enable = 1,
+    Disable = 0,
+    Ignore = -1,
+}
+
+public class Retry()
+{
+    public RetryMethod Type = RetryMethod.SameSeed;
+    public Quickstop[] QuickstopToggles = [
+        Quickstop.Ignore,
+        Quickstop.Ignore,
+        Quickstop.Enable,
+        Quickstop.Ignore,
+        Quickstop.Enable,
+        Quickstop.Ignore,
+        Quickstop.Ignore,
+        Quickstop.Ignore
+    ];
+
+    internal int Seed = 0;
+}
 
 public partial class Timer
 {
     internal static Toggle? UiToggle;
+    
+    internal static Retry? RetryInfo = null;
+    internal static RuntimeConfig? LastConfig = null;
 }
 
 [HarmonyPatch(typeof(AirframeMainMenu), nameof(AirframeMainMenu.Update))]
 static class AirframeMainMenu_Update_Patch
 {
     public static void Postfix()
-    { 
-        var lookFor = "SettingsScrollview";
-
+    {
         if (Timer.UiToggle == null)
         {
-            if (GameObject.Find(lookFor) is GameObject gameObj)
+            if (GameObject.Find("SettingsScrollview") is GameObject gameObj)
             {
                 var option = gameObj.transform.GetChild(0).GetChild(0).GetChild(3).gameObject;
                 var timerOption = GameObject.Instantiate(option);
@@ -34,10 +67,29 @@ static class AirframeMainMenu_Update_Patch
                 if (timerOption.GetComponentInChildren<Toggle>() is Toggle tog)
                     Timer.UiToggle = tog;
             }
-        } else
+        }
+        else
         {
             Timer.enabled = Timer.UiToggle.isOn;
             Timer.UiToggle.transform.parent.SetSiblingIndex(5);
+        }
+
+
+        if (Timer.RetryInfo is not null)
+        {
+            foreach (var button in GameObject.FindObjectsOfType<Button>())
+            {
+                if (button is Button o)
+                {
+                    if (o.name == "PlayButton" || o.name == "PlayOfflineButton")
+                    {
+                        o.gameObject.SetActive(true);
+                        o.enabled = true;                        
+                        o.Press();
+                    }
+                    
+                } else Timer.Log.Error("object null");
+            }
         }
     }
 }

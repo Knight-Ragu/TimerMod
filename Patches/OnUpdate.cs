@@ -13,12 +13,13 @@ public partial class Timer
     internal static int TrySetupUI = 0;
 }
 
-// [HarmonyPatch(typeof(QuantumGame), "OnUpdateDone")]
 [HarmonyPatch(typeof(DeterministicSession), nameof(DeterministicSession.UpdateSimulationInner))]
 class DeterministicSession_UpdateSimulationInner_Patch
 {
     public static void Postfix(DeterministicSession __instance)
     {
+        if (!Timer.enabled || Timer.RetryInfo is not null) return;
+
         Timer.Now = __instance.SimulationTimeElasped;
 
         if (Timer.TrySetupUI > 0)
@@ -102,7 +103,7 @@ class DeterministicSession_UpdateSimulationInner_Patch
         Timer.SumText.Text = $"{System.TimeSpan.FromSeconds(Timer.SumRaceTime()):mm\\:ss\\.ff}";
         Timer.SumText.freeColor = Timer.TextColor(Timer.wasFastestRaceSum);
 
-        if (Timer.RaceStart is double t)
+        if (Timer.SprintStart is double t)
         {
             Timer.RaceText.Text = $"{System.TimeSpan.FromSeconds(Timer.Now - t):mm\\:ss\\.ff}";
             Timer.RaceText.freeColor = Timer.TextBaseColor;

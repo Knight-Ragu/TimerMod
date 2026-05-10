@@ -4,25 +4,53 @@ using Il2CppQuantum;
 
 namespace TimerMod;
 
-[HarmonyPatch(typeof(PhotonController), "ChangeSceneAndStartQuantumGameCoroutine")]
+[HarmonyPatch(typeof(PhotonController), nameof(PhotonController.ChangeSceneAndStartQuantumGameCoroutine))]
 class PhotonController_ChangeSceneAndStartQuantumGameCoroutine_Patch
 {
     public static void Prefix(ref RuntimeConfig runtimeConfig)
     {
-        if (!Timer.enabled) return;
+        int seed = runtimeConfig.Seed;
+
+        if (Timer.RetryInfo is Retry retry)
+        {
+            if (retry.Type == RetryMethod.SameSeed) seed = Timer.LastConfig.Seed;
+
+            runtimeConfig.Map = Timer.LastConfig.Map;
+            runtimeConfig.SimulationConfig = Timer.LastConfig.SimulationConfig;
+            runtimeConfig.SystemsConfig = Timer.LastConfig.SystemsConfig;
+            runtimeConfig.config = Timer.LastConfig.config;
+            runtimeConfig.gameSetup = Timer.LastConfig.gameSetup;
+
+            Timer.LastConfig = null;
+
+            Timer.Log.Msg($"Retry: {retry.Type}");
+
+            if (retry.Type != RetryMethod.InfiniteRandomSeed
+             && retry.Type != RetryMethod.RandomQuickstopSeed
+            )
+                Timer.RetryInfo = null;
+            else 
+                retry.Seed = seed;
+
+        } 
+        else if (ReadWrite.ReadSeedFile() is int seedFile)
+            seed = seedFile;
+        
 
         var gameSetup = runtimeConfig.gameSetup;
-        
-        if (Timer.ReadSeedFile() is int seed)
-            runtimeConfig.Seed = seed;
 
         gameSetup.police = false;
-        gameSetup.startMoney = 9999999;
-        gameSetup.respawnMoney = 9999999;
-        gameSetup.consumableMoney = 9999999;
-        gameSetup.gameMode = GameMode.RaceGameMode;
-        gameSetup.scoreToWin = 99999;
-        gameSetup.totalLives = 99999;
+        gameSetup.startMoney = 999999;
+        gameSetup.respawnMoney = 999999;
+        gameSetup.consumableMoney = 999999;
+        gameSetup.scoreToWin = 999999;
+        gameSetup.totalLives = 999999;
+        // gameSetup.gameMode = GameMode.RaceGameMode;
+
+        runtimeConfig.Seed = seed;
+        Timer.LastConfig = runtimeConfig;
+
+        Timer.Log.Msg($"Race Seed: {runtimeConfig.Seed}");
 
         // runtimeConfig.gameSetup = new RuntimeConfig.GameSetup() {
         //     police = false,
@@ -43,7 +71,5 @@ class PhotonController_ChangeSceneAndStartQuantumGameCoroutine_Patch
         //     scoreToWin = 10,
         //     totalLives = 77,
         // };
-
-        Timer.Log.Msg($"Race Seed: {runtimeConfig.Seed}");
     }
 }
