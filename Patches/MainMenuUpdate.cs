@@ -8,36 +8,6 @@ using Button = UnityEngine.UI.Button;
 
 namespace TimerMod;
 
-public enum RetryMethod {
-    SameSeed,
-    RandomSeed,
-    InfiniteRandomSeed,
-    RandomQuickstopSeed,
-}
-
-public enum Quickstop {
-    Enable = 1,
-    Disable = 0,
-    Ignore = -1,
-}
-
-public class Retry()
-{
-    public RetryMethod Type = RetryMethod.SameSeed;
-    public Quickstop[] QuickstopToggles = [
-        Quickstop.Ignore,
-        Quickstop.Ignore,
-        Quickstop.Enable,
-        Quickstop.Ignore,
-        Quickstop.Enable,
-        Quickstop.Ignore,
-        Quickstop.Ignore,
-        Quickstop.Ignore
-    ];
-
-    internal int Seed = 0;
-}
-
 public partial class Timer
 {
     internal static Toggle? UiToggle;
@@ -86,10 +56,42 @@ static class AirframeMainMenu_Update_Patch
                         o.gameObject.SetActive(true);
                         o.enabled = true;                        
                         o.Press();
+                        o.m_OnClick.Invoke();
+                        o.onClick.Invoke();
                     }
                     
                 } else Timer.Log.Error("object null");
             }
         }
     }
+}
+
+public class Retry()
+{
+    public RetryMethod Type = RetryMethod.SameSeed;
+    public Quickstop[] QuickstopToggles = [
+        Quickstop.Ignore,
+        Quickstop.Ignore,
+        Quickstop.Enable,
+        Quickstop.Ignore,
+        Quickstop.Enable,
+        Quickstop.Ignore,
+        Quickstop.Ignore,
+        Quickstop.Ignore
+    ];
+
+    internal int Seed = 0;
+}
+
+public enum RetryMethod {
+    SameSeed,
+    RandomSeed,
+    InfiniteRandomSeed,
+    RandomQuickstopSeed,
+}
+
+public enum Quickstop {
+    Enable = 1,
+    Disable = 0,
+    Ignore = -1,
 }

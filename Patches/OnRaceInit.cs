@@ -3,7 +3,7 @@ using Il2CppQuantum_Game;
 
 namespace TimerMod;
 
-[HarmonyPatch(typeof(StragglerBoostSystem), nameof(StragglerBoostSystem.OnInit))]
+[HarmonyPatch(typeof(RaceGameModeSystem), nameof(RaceGameModeSystem.OnInit))]
 class StragglerBoostSystem_OnInit_Patch
 {
     public static void Postfix() // Straggler boost positions:
@@ -11,9 +11,6 @@ class StragglerBoostSystem_OnInit_Patch
         if (!Timer.enabled) return;
 
         Timer.TrySetupUI = 270;
-        Timer.SprintTimes.Clear();
-
-        Timer.wasFastestSprint = false;
-        Timer.wasFastestRaceSum = false;
+        Timer.Reset();
     }
 }

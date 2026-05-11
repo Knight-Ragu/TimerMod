@@ -14,7 +14,7 @@ public partial class ReadWrite
         string model;
 
         if (bikeModel is not null)
-            model = System.Enum.GetName(Timer.bikeModel.Value);
+            model = System.Enum.GetName(bikeModel.Value);
         else
             model = "Nobike";
 
@@ -24,7 +24,7 @@ public partial class ReadWrite
         return (Timer.TimesFolder + splitsFolderName, Timer.TimesFolder + splitsFolderName + splitsFileName);
     }
 
-    internal static (bool wroteToSprint, bool wroteToSum) SaveSplitTime(string splitsFile, int index, double sprintTime, double raceTime)
+    internal static (bool wroteToSprint, bool wroteToSum) SaveSplitTime(string splitsFile, int index, long sprintTime, long raceTime)
     {
         var times = File.ReadAllLines(splitsFile);
 
@@ -32,7 +32,7 @@ public partial class ReadWrite
             if (index >= times.Length) System.Array.Resize(ref times, index + 1);
 
             for (int f = 0; f < times.Length; f++)
-                if (times[f] is null) times[f] = "";
+                if (times[f] is null) times[f] = "-|-";
         }
 
         bool wroteToSprint = true;
@@ -43,19 +43,22 @@ public partial class ReadWrite
 
             if (pair.Length == 2)
             {
-                if (double.TryParse(pair[0], out var savedSprint))
+                if (long.TryParse(pair[0], out var savedSprint))
                 {
                     wroteToSprint = savedSprint > sprintTime;
+                    Timer.Log.Msg($"{wroteToSprint}, Sprinyt2");
                     sprintTime = System.Math.Min(sprintTime, savedSprint);
                 }
 
-                if (double.TryParse(pair[1], out var savedRace))
+                if (long.TryParse(pair[1], out var savedRace))
                 {
                     wroteToSum = savedRace > raceTime;
                     raceTime = System.Math.Min(raceTime, savedRace);
                 }
             }
         }
+
+        Timer.Log.Msg($"{wroteToSprint}, Sprinyt");
 
         times[index] = $"{sprintTime}|{raceTime}";
 

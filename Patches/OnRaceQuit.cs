@@ -9,10 +9,11 @@ class SessionRunner_Shutdown_Patch
 {
     public static void Postfix() // Shutting down runner
     {
+        RaceGameStateExtensions_RaceGameStateExtensions_Patch.once = true;
         if (Timer.RetryInfo is not null) return;
-        if (!Timer.enabled || Timer.Now == 0.0) return;
+        if (!Timer.enabled || Timer.sprintTime == 0) return;
 
-        Timer.Log.Msg($"Game time: {System.TimeSpan.FromSeconds(Timer.Now):mm\\:ss\\.ff}");
+        Timer.Log.Msg($"Game time: {System.TimeSpan.FromSeconds(Timer.TotalSeconds):mm\\:ss\\.ff}");
 
         string playtimeFile = Timer.DataFolder + $"\\Playtime.txt";
 

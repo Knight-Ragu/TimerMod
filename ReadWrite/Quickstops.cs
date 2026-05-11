@@ -7,8 +7,8 @@ public partial class ReadWrite
 {
     internal static void CreateNewQuickstopsFile(string QuickstopsFile)
         => File.WriteAllLines(QuickstopsFile, [
-            "// File for setting your quickstop preferences, valid settings are 'Enable', 'Disable', and 'Ignore'.",
-            "// The third and fifth ones are the first and second quickstops on quarry/storm drain",
+            "// File for setting your quickstop preferences, valid options are 'Enable', 'Disable', and 'Ignore'.",
+            "// The third and fifth ones are the first and second quickstops on Quarry/Storm Drain",
             "Ignore",
             "Ignore",
             "Enable",
@@ -22,7 +22,7 @@ public partial class ReadWrite
     internal static Quickstop[] ReadQuickstopsFile()
     {
         string[] lines = File.ReadAllLines(Timer.QuickstopsFile);
-        Quickstop[] quickstops = Enumerable.Repeat(Quickstop.Ignore, lines.Length).ToArray();
+        Quickstop[] quickstops = [.. Enumerable.Repeat(Quickstop.Ignore, lines.Length)];
 
         int i = 0;
         foreach (var line in lines)

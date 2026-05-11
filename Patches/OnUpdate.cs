@@ -1,13 +1,15 @@
 using HarmonyLib;
 using Il2CppCustomUIRendering_Access;
 using Il2CppPhoton.Deterministic;
+using Il2CppQuantum;
+using Il2CppQuantum.Core;
 using UnityEngine;
 
 namespace TimerMod;
 
 public partial class Timer
 {
-    internal static ASCIILabel RaceText = null;
+    internal static ASCIILabel SprintText = null;
     internal static ASCIILabel SumText = null;
     internal static Color TextBaseColor => new(0.7f, 0.7f, 0.7f, 1.0f);
     internal static int TrySetupUI = 0;
@@ -20,12 +22,12 @@ class DeterministicSession_UpdateSimulationInner_Patch
     {
         if (!Timer.enabled || Timer.RetryInfo is not null) return;
 
-        Timer.Now = __instance.SimulationTimeElasped;
-
         if (Timer.TrySetupUI > 0)
         {
             if (Timer.TrySetupUI == 1)
             {
+                Timer.Log.Msg($"DeltaTime: {__instance.DeltaTime}");
+
                 try 
                 {
                     var hud = GameObject.Find("Scoreboard_Scorebox(Clone)").transform;
@@ -64,21 +66,21 @@ class DeterministicSession_UpdateSimulationInner_Patch
                         obj.transform.localScale = new Vector3(2.4f, 1.97f, 1.0f);
                         obj2.transform.localScale = new Vector3(2.35f, 1.93f, 1.0f);
 
-                        Timer.RaceText = obj.GetComponent<ASCIILabel>();
+                        Timer.SprintText = obj.GetComponent<ASCIILabel>();
                         Timer.SumText = obj2.GetComponent<ASCIILabel>();
 
-                        Timer.RaceText.Text = "00:00.00";
+                        Timer.SprintText.Text = "00:00.00";
                         Timer.SumText.Text = "00:00.00";
 
-                        Timer.RaceText.freeColorMode = true;
+                        Timer.SprintText.freeColorMode = true;
                         Timer.SumText.freeColorMode = true;
 
-                        Timer.RaceText.gameObject.SetActive(false);
+                        Timer.SprintText.gameObject.SetActive(false);
                         Timer.SumText.gameObject.SetActive(false);
-                        Timer.RaceText.gameObject.SetActive(true);
+                        Timer.SprintText.gameObject.SetActive(true);
                         Timer.SumText.gameObject.SetActive(true);
 
-                        Timer.RaceText.freeColor = Timer.TextBaseColor;
+                        Timer.SprintText.freeColor = Timer.TextBaseColor;
                         Timer.SumText.freeColor = Timer.TextBaseColor;
                     }
                     else
@@ -96,32 +98,51 @@ class DeterministicSession_UpdateSimulationInner_Patch
         }
 
 
-        if (Timer.RaceText is null) return;
+        if (Timer.SprintText is null) return;
 
-
-
-        Timer.SumText.Text = $"{System.TimeSpan.FromSeconds(Timer.SumRaceTime()):mm\\:ss\\.ff}";
+        Timer.SumText.Text = $"{System.TimeSpan.FromSeconds(Timer.RaceSumSeconds()):mm\\:ss\\.ff}";
         Timer.SumText.freeColor = Timer.TextColor(Timer.wasFastestRaceSum);
 
-        if (Timer.SprintStart is double t)
-        {
-            Timer.RaceText.Text = $"{System.TimeSpan.FromSeconds(Timer.Now - t):mm\\:ss\\.ff}";
-            Timer.RaceText.freeColor = Timer.TextBaseColor;
-        }
-        else if (Timer.SprintTimes.Count >= 1 && Timer.SprintTimes[^1] is (double start, double end))
-        {
-            var lastRaceTime = end - start;
-            Timer.RaceText.Text = $"{System.TimeSpan.FromSeconds(lastRaceTime):mm\\:ss\\.ff}";
+        Timer.SprintText.Text = $"{System.TimeSpan.FromSeconds(Timer.SprintSeconds):mm\\:ss\\.ff}";
+        Timer.SprintText.freeColor = Timer.TextColor(Timer.wasFastestSprint);
 
-            Timer.RaceText.freeColor = Timer.TextColor(Timer.wasFastestSprint);
-        }
-
-        Timer.RaceText.Resized();
+        Timer.SprintText.Resized();
         Timer.SumText.Resized();
 
-        Timer.RaceText.gameObject.SetActive(false);
+        Timer.SprintText.gameObject.SetActive(false);
         Timer.SumText.gameObject.SetActive(false);
-        Timer.RaceText.gameObject.SetActive(true);
+        Timer.SprintText.gameObject.SetActive(true);
         Timer.SumText.gameObject.SetActive(true);
+    }
+}
+
+// [HarmonyPatch(typeof(FrameContext), nameof(FrameContext.OnFrameSimulationBegin))]
+class FrameContext_OnFrameSimulationBegin_Patch
+{
+    public unsafe static void Postfix(FrameBase f)
+    {
+        if (!Timer.enabled) return;
+
+        Timer.totalTime++;
+
+        var gameState = f.GetOrAddSingletonPointer<RaceGameState>();
+
+        if (gameState->mode == RaceGameStateMode.Race && !Timer.crossedFinishLine)
+            Timer.sprintTime = gameState->timeInCurrentMode;
+        
+        gameState->currArenaType = ArenaType.RaceStart;
+        
+        // if (gameState->mode == RaceGameStateMode.Arena)
+        // {
+        //     gameState->mode = RaceGameStateMode.Countdown;
+        //     gameState->countdownTimer = 7;
+        // }
+
+        if (gameState->currArenaType != ArenaType.RaceStart)
+        {
+            // Timer.Log.Msg($"countdownTimer: {gameState->countdownTimer}");
+        }
+
+        // Timer.Log.Msg($"{gameState->arenaStopsCounter}, ({gameState->lastArenaIndex}, {gameState->currArenaIndex}), {gameState->playersNotYetReachedArena}, {gameState->countdownTimer}");
     }
 }

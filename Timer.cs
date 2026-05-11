@@ -26,30 +26,36 @@ public partial class Timer : MelonMod
 
     internal static bool enabled = true;
 
-    internal static double Now = 0.0;
-    internal static double? SprintStart = null;
+    public static double SprintSeconds => (double)sprintTime / 45.0;
+    internal static long sprintTime = 0;
+    internal static double TotalSeconds => (double)totalTime / 45.0;
+    internal static long totalTime = 0;
+
+    internal static bool crossedFinishLine = false;
     internal static bool wasFastestSprint = false;
     internal static bool wasFastestRaceSum = false;
 
-    internal static List<(double start, double end)> SprintTimes = [];
+    internal static List<long> SprintTimes = [];
 
 
-    internal static double SumRaceTime()
+    internal static long RaceSumTime()
     {
-        double sum = 0.0;
+        long sum = 0;
 
-        foreach (var (start, end) in SprintTimes)
-            sum += end - start;
+        foreach (var sprint in SprintTimes)
+            sum += sprint;
 
         return sum;
     }
+
+    internal static double RaceSumSeconds() => (double)RaceSumTime() / 45.0;
 
     internal static Color TextColor(bool fast)
     {
         if (fast)
         {
             Color baseCol = Timer.TextBaseColor;
-            float sin = Mathf.Sin((float)Now * 3.6f) * 0.375f + 0.62f;
+            float sin = Mathf.Sin((float)Timer.TotalSeconds * 3.6f) * 0.375f + 0.62f;
 
             return new Color(baseCol.r * sin, baseCol.g + (1.0f - sin) * 0.25f, baseCol.b * sin);
         }
@@ -59,16 +65,17 @@ public partial class Timer : MelonMod
 
     internal static void Reset()
     {
-        Timer.RaceText = null;
+        Timer.SprintText = null;
         Timer.SumText = null;
 
-        Timer.SprintStart = null;
         Timer.bikeModel = null;
         Timer.SprintTimes.Clear();
 
         Timer.wasFastestSprint = false;
         Timer.wasFastestRaceSum = false;
-        Timer.Now = 0.0;
+        Timer.crossedFinishLine = false;
+        Timer.sprintTime = 0;
+        Timer.totalTime = 0;
     }
 
     public static void Retry(RetryMethod type, Quickstop[] quickstopToggles = default)

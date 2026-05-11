@@ -26,11 +26,11 @@ public partial class ReadWrite
             model = "Nobike";
         }
 
-        double totalTime = Timer.Now;
+        double totalTime = Timer.TotalSeconds;
 
         { // Decide what to write
             if (double.TryParse(times[i].Split(' ')[0], out var num))
-                totalTime = System.TimeSpan.FromHours(num).TotalSeconds + Timer.Now;
+                totalTime += System.TimeSpan.FromHours(num).TotalSeconds;
         }
         
 
