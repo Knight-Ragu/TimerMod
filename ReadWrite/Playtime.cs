@@ -8,7 +8,7 @@ public partial class ReadWrite
     internal static void CreateNewPlaytimesFile(string filePath)
         => File.WriteAllLines(filePath, ["0.0", "0.0", "0.0", "0.0", "0.0", " ", "0.0"]);
 
-    internal static string SavePlaytime(string playtimeFile, HoverbikeModel? bM)
+    internal static string SavePlaytime(string playtimeFile, HoverbikeModel? bM, long playtime)
     {
         var times = File.ReadAllLines(playtimeFile);
 
@@ -26,15 +26,15 @@ public partial class ReadWrite
             model = "Nobike";
         }
 
-        double totalTime = Timer.TotalSeconds;
+        double time = (double)playtime / 45.0;
 
         { // Decide what to write
             if (double.TryParse(times[i].Split(' ')[0], out var num))
-                totalTime += System.TimeSpan.FromHours(num).TotalSeconds;
+                time += System.TimeSpan.FromHours(num).TotalSeconds;
         }
         
 
-        times[i] = $"{System.TimeSpan.FromSeconds(totalTime).TotalHours} // {model}";
+        times[i] = $"{System.TimeSpan.FromSeconds(time).TotalHours} // {model}";
 
         double sum = 0.0;
 

@@ -46,7 +46,6 @@ public partial class ReadWrite
                 if (long.TryParse(pair[0], out var savedSprint))
                 {
                     wroteToSprint = savedSprint > sprintTime;
-                    Timer.Log.Msg($"{wroteToSprint}, Sprinyt2");
                     sprintTime = System.Math.Min(sprintTime, savedSprint);
                 }
 
@@ -57,8 +56,6 @@ public partial class ReadWrite
                 }
             }
         }
-
-        Timer.Log.Msg($"{wroteToSprint}, Sprinyt");
 
         times[index] = $"{sprintTime}|{raceTime}";
 

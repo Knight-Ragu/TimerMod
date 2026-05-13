@@ -4,6 +4,7 @@ using UnityEngine;
 using MelonLoader.Utils;
 using Il2Cpp;
 using System.IO;
+using Il2CppQuantum;
 
 [assembly: MelonInfo(typeof(TimerMod.Timer), "TimerMod", "0.0.1", "Knight-Ragu", null)]
 [assembly: MelonGame("Videocult", "Airframe")]
@@ -26,36 +27,21 @@ public partial class Timer : MelonMod
 
     internal static bool enabled = true;
 
-    public static double SprintSeconds => (double)sprintTime / 45.0;
-    internal static long sprintTime = 0;
-    internal static double TotalSeconds => (double)totalTime / 45.0;
-    internal static long totalTime = 0;
 
-    internal static bool crossedFinishLine = false;
+    internal static RaceInfo? currentRace = null;
+    internal static SingleSegment? segmentArena = null;
+
     internal static bool wasFastestSprint = false;
     internal static bool wasFastestRaceSum = false;
 
-    internal static List<long> SprintTimes = [];
+    internal static Transform3D SpawnPosition = Transform3D.Create();
 
-
-    internal static long RaceSumTime()
+    internal static Color TextColor(bool best)
     {
-        long sum = 0;
-
-        foreach (var sprint in SprintTimes)
-            sum += sprint;
-
-        return sum;
-    }
-
-    internal static double RaceSumSeconds() => (double)RaceSumTime() / 45.0;
-
-    internal static Color TextColor(bool fast)
-    {
-        if (fast)
+        if (best)
         {
             Color baseCol = Timer.TextBaseColor;
-            float sin = Mathf.Sin((float)Timer.TotalSeconds * 3.6f) * 0.375f + 0.62f;
+            float sin = Mathf.Sin((float)Timer.currentRace?.TotalElapsedSeconds * 3.6f) * 0.375f + 0.62f;
 
             return new Color(baseCol.r * sin, baseCol.g + (1.0f - sin) * 0.25f, baseCol.b * sin);
         }
@@ -65,17 +51,13 @@ public partial class Timer : MelonMod
 
     internal static void Reset()
     {
-        Timer.SprintText = null;
-        Timer.SumText = null;
-
-        Timer.bikeModel = null;
-        Timer.SprintTimes.Clear();
-
+        Timer.currentRace = new();
         Timer.wasFastestSprint = false;
         Timer.wasFastestRaceSum = false;
-        Timer.crossedFinishLine = false;
-        Timer.sprintTime = 0;
-        Timer.totalTime = 0;
+
+        Timer.TrySetupUI = 45;
+        Timer.SprintText = null;
+        Timer.SumText = null;
     }
 
     public static void Retry(RetryMethod type, Quickstop[] quickstopToggles = default)

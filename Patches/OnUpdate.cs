@@ -1,9 +1,10 @@
 using HarmonyLib;
 using Il2CppCustomUIRendering_Access;
-using Il2CppPhoton.Deterministic;
 using Il2CppQuantum;
 using Il2CppQuantum.Core;
+using Il2CppQuantum_Game;
 using UnityEngine;
+using Il2CppList = Il2CppSystem.Collections.Generic.List<Il2CppQuantum.EntityRef>;
 
 namespace TimerMod;
 
@@ -15,134 +16,151 @@ public partial class Timer
     internal static int TrySetupUI = 0;
 }
 
-[HarmonyPatch(typeof(DeterministicSession), nameof(DeterministicSession.UpdateSimulationInner))]
-class DeterministicSession_UpdateSimulationInner_Patch
-{
-    public static void Postfix(DeterministicSession __instance)
-    {
-        if (!Timer.enabled || Timer.RetryInfo is not null) return;
-
-        if (Timer.TrySetupUI > 0)
-        {
-            if (Timer.TrySetupUI == 1)
-            {
-                Timer.Log.Msg($"DeltaTime: {__instance.DeltaTime}");
-
-                try 
-                {
-                    var hud = GameObject.Find("Scoreboard_Scorebox(Clone)").transform;
-                    ASCIILabel txt = null;
-
-                    foreach (var child in hud)
-                    {
-                        if (child.TryCast<Transform>() is Transform tra)
-                        {
-                            try {
-                                if (tra.name == "NameLabel" && tra.TryGetComponent<ASCIILabel>(out var agh))
-                                {
-                                    txt = agh;
-                                    Timer.Log.Msg("Found a match!");
-                                }
-                            } 
-                            catch (System.Exception ex)
-                            {
-                                Timer.Log.Error(ex);
-                            }
-                        }
-                        else
-                        {
-                            Timer.Log.Error("Object not transform");
-                        }
-                    }
-
-                    if (txt is not null)
-                    {
-                        var obj = UnityEngine.Object.Instantiate(txt.transform.gameObject, hud);
-                        var obj2 = UnityEngine.Object.Instantiate(txt.transform.gameObject, hud);
-                        
-                        obj.transform.localPosition = new Vector3(170, -48, 0);
-                        obj2.transform.localPosition = new Vector3(170, -98, 0);
-
-                        obj.transform.localScale = new Vector3(2.4f, 1.97f, 1.0f);
-                        obj2.transform.localScale = new Vector3(2.35f, 1.93f, 1.0f);
-
-                        Timer.SprintText = obj.GetComponent<ASCIILabel>();
-                        Timer.SumText = obj2.GetComponent<ASCIILabel>();
-
-                        Timer.SprintText.Text = "00:00.00";
-                        Timer.SumText.Text = "00:00.00";
-
-                        Timer.SprintText.freeColorMode = true;
-                        Timer.SumText.freeColorMode = true;
-
-                        Timer.SprintText.gameObject.SetActive(false);
-                        Timer.SumText.gameObject.SetActive(false);
-                        Timer.SprintText.gameObject.SetActive(true);
-                        Timer.SumText.gameObject.SetActive(true);
-
-                        Timer.SprintText.freeColor = Timer.TextBaseColor;
-                        Timer.SumText.freeColor = Timer.TextBaseColor;
-                    }
-                    else
-                    {
-                        Timer.Log.Msg("Could not match text object :(");
-                    }
-                }
-                catch (System.Exception ex)
-                {
-                    Timer.Log.Error(ex);
-                }
-            }
-
-            Timer.TrySetupUI--;
-        }
-
-
-        if (Timer.SprintText is null) return;
-
-        Timer.SumText.Text = $"{System.TimeSpan.FromSeconds(Timer.RaceSumSeconds()):mm\\:ss\\.ff}";
-        Timer.SumText.freeColor = Timer.TextColor(Timer.wasFastestRaceSum);
-
-        Timer.SprintText.Text = $"{System.TimeSpan.FromSeconds(Timer.SprintSeconds):mm\\:ss\\.ff}";
-        Timer.SprintText.freeColor = Timer.TextColor(Timer.wasFastestSprint);
-
-        Timer.SprintText.Resized();
-        Timer.SumText.Resized();
-
-        Timer.SprintText.gameObject.SetActive(false);
-        Timer.SumText.gameObject.SetActive(false);
-        Timer.SprintText.gameObject.SetActive(true);
-        Timer.SumText.gameObject.SetActive(true);
-    }
-}
-
-// [HarmonyPatch(typeof(FrameContext), nameof(FrameContext.OnFrameSimulationBegin))]
+[HarmonyPatch(typeof(FrameContext), nameof(FrameContext.OnFrameSimulationBegin))]
 class FrameContext_OnFrameSimulationBegin_Patch
 {
     public unsafe static void Postfix(FrameBase f)
     {
-        if (!Timer.enabled) return;
-
-        Timer.totalTime++;
+        if (!Timer.enabled || Timer.RetryInfo is not null) return;
+        if (Timer.currentRace is not RaceInfo race) return;
 
         var gameState = f.GetOrAddSingletonPointer<RaceGameState>();
-
-        if (gameState->mode == RaceGameStateMode.Race && !Timer.crossedFinishLine)
-            Timer.sprintTime = gameState->timeInCurrentMode;
         
-        gameState->currArenaType = ArenaType.RaceStart;
-        
-        // if (gameState->mode == RaceGameStateMode.Arena)
-        // {
-        //     gameState->mode = RaceGameStateMode.Countdown;
-        //     gameState->countdownTimer = 7;
-        // }
-
-        if (gameState->currArenaType != ArenaType.RaceStart)
+        if (Timer.segmentArena is null && gameState->mode == RaceGameStateMode.Arena)
         {
-            // Timer.Log.Msg($"countdownTimer: {gameState->countdownTimer}");
+            gameState->mode = RaceGameStateMode.Countdown;
+            gameState->countdownTimer = 12;
         }
 
+        if (gameState->currArenaType == ArenaType.RaceStart)
+        {
+            if (Timer.segmentArena is SingleSegment arena)
+            {
+                GiveAllPlayersInifiniteScore((Frame)f);
+
+                if (gameState->countdownTimer > 0 && gameState->countdownTimer < 45)
+                {
+                    gameState->currArenaIndex = arena.GetArenaIndex();
+                    gameState->lastArenaIndex = arena.GetArenaIndex(-1);
+                }
+                else if (f is Frame frame)
+                {
+                    RaceGameModeSystem.SetStartLineGatesClosed(frame, arena.GetArenaIndex(), true);
+                }
+            }
+        }
+        else race.totalElapsedTime++;
+
         // Timer.Log.Msg($"{gameState->arenaStopsCounter}, ({gameState->lastArenaIndex}, {gameState->currArenaIndex}), {gameState->playersNotYetReachedArena}, {gameState->countdownTimer}");
+
+        if (Timer.TrySetupUI > 0)
+        {
+            if (Timer.TrySetupUI == 1)
+                CreateTimerLabels(out Timer.SprintText, out Timer.SumText);
+
+            Timer.TrySetupUI--;
+        }
+
+        if (Timer.SprintText is null) return;
+
+        if (!race.crossedFinishLine && gameState->mode == RaceGameStateMode.Race)
+            Timer.SprintText.Text = $"{System.TimeSpan.FromSeconds((double)gameState->timeInCurrentMode / 45.0):mm\\:ss\\.ff}";
+
+        Timer.SprintText.freeColor = Timer.TextColor(Timer.wasFastestSprint);
+
+        UpdateLabel(Timer.SprintText);
+        UpdateLabel(Timer.SumText, race.RaceSumTime(), Timer.TextColor(Timer.wasFastestRaceSum));
+    }
+
+    private unsafe static void GiveAllPlayersInifiniteScore(Frame f)
+    {
+        Il2CppList refs = new();
+        f.GetAllEntityRefs(refs);
+
+        foreach (var entity in refs)
+            if (f.Has<ParticipatingPlayer>(entity))
+            {
+                var p = f.GetPointer<ParticipatingPlayer>(entity);
+                p->points = 999999;
+                p->kills = 999999;
+            }
+    }
+
+    internal static void UpdateLabel(ASCIILabel label, long? time = null, Color? color = null)
+    {
+        if (label is null) return;
+
+        if (time is long t) label.Text = $"{System.TimeSpan.FromSeconds((double)t / 45.0):mm\\:ss\\.ff}";
+        if (color is Color c) label.freeColor = c;
+        
+        // Timer.SumText.Text = $"{System.TimeSpan.FromSeconds((double)label2Time / 45.0):mm\\:ss\\.ff}";
+        // Timer.SumText.freeColor = Timer.TextColor(Timer.wasFastestRaceSum);
+
+        label.Resized();
+        // Timer.SumText.Resized();
+
+        label.gameObject.SetActive(false);
+        // Timer.SumText.gameObject.SetActive(false);
+        label.gameObject.SetActive(true);
+        // Timer.SumText.gameObject.SetActive(true);
+    }
+
+    private static void CreateTimerLabels(out ASCIILabel? label1, out ASCIILabel? label2)
+    {
+        label1 = null;
+        label2 = null;
+
+        try
+        {
+            Transform scoreboardTransform = GameObject.Find("Scoreboard_Scorebox(Clone)").transform;
+            ASCIILabel txt = null;
+
+            foreach (var child in scoreboardTransform)
+                if (child.TryCast<Transform>() is Transform tra && tra.name == "NameLabel")
+                {
+                    if (tra.TryGetComponent<ASCIILabel>(out var agh))
+                    {
+                        txt = agh;
+                        // Timer.Log.Msg("Found a match!");
+                    }
+                }
+
+            if (txt is not null)
+            {
+                var obj = UnityEngine.Object.Instantiate(txt.transform.gameObject, scoreboardTransform);
+                var obj2 = UnityEngine.Object.Instantiate(txt.transform.gameObject, scoreboardTransform);
+                
+                obj.transform.localPosition = new Vector3(170, -48, 0);
+                obj2.transform.localPosition = new Vector3(170, -98, 0);
+
+                obj.transform.localScale = new Vector3(2.4f, 1.97f, 1.0f);
+                obj2.transform.localScale = new Vector3(2.35f, 1.93f, 1.0f);
+
+                label1 = obj.GetComponent<ASCIILabel>();
+                label2 = obj2.GetComponent<ASCIILabel>();
+
+                label1.Text = "00:00.00";
+                label2.Text = "00:00.00";
+
+                label1.freeColorMode = true;
+                label2.freeColorMode = true;
+
+                label1.gameObject.SetActive(false);
+                label2.gameObject.SetActive(false);
+                label1.gameObject.SetActive(true);
+                label2.gameObject.SetActive(true);
+
+                label1.freeColor = Timer.TextBaseColor;
+                label2.freeColor = Timer.TextBaseColor;
+            }
+            else
+            {
+                Timer.Log.Error("Could not match text object :(");
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Timer.Log.Error(ex);
+        }
     }
 }

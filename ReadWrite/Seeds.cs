@@ -4,15 +4,28 @@ using Il2CppPhoton.Deterministic;
 
 namespace TimerMod;
 
-public partial class ReadWrite
+public abstract partial class ReadWrite
 {
-    internal static int? ReadSeedFile()
+    internal static void CreateNewSeedFile(string QuickstopsFile)
+        => File.WriteAllLines(QuickstopsFile, [
+            "-",
+            "-",
+            "",
+            "// First line is for the seed that determines all rng in a given race",
+            "// Second line is what race segment to start on, may behave differetly on different maps",
+        ]);
+
+
+    internal static bool ReadSeed(out int seed)
     {
         var lines = File.ReadAllLines(Timer.SeedFile);
-        if (lines.Length > 0 && int.TryParse(lines[0], out int seed))
-            return seed;
+        return int.TryParse(lines[0], out seed);
+    }
 
-        return null;
+    internal static bool ReadArenaIndex(out int arenaIndex)
+    {
+        var lines = File.ReadAllLines(Timer.SeedFile);
+        return int.TryParse(lines[1], out arenaIndex);
     }
 
 

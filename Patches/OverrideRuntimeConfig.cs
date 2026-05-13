@@ -9,6 +9,8 @@ class PhotonController_ChangeSceneAndStartQuantumGameCoroutine_Patch
 {
     public static void Prefix(ref RuntimeConfig runtimeConfig)
     {
+        Timer.Reset();
+
         int seed = runtimeConfig.Seed;
 
         if (Timer.RetryInfo is Retry retry)
@@ -25,27 +27,29 @@ class PhotonController_ChangeSceneAndStartQuantumGameCoroutine_Patch
 
             Timer.Log.Msg($"Retry: {retry.Type}");
 
-            if (retry.Type != RetryMethod.InfiniteRandomSeed
+            if (
+                retry.Type != RetryMethod.InfiniteRandomSeed
              && retry.Type != RetryMethod.RandomQuickstopSeed
-            )
+            ) {
                 Timer.RetryInfo = null;
-            else 
+            } else { 
                 retry.Seed = seed;
-
+            }
         } 
-        else if (ReadWrite.ReadSeedFile() is int seedFile)
+        else if (ReadWrite.ReadSeed(out int seedFile))
             seed = seedFile;
         
 
         var gameSetup = runtimeConfig.gameSetup;
 
+        if (ReadWrite.ReadArenaIndex(out _))
+            gameSetup.scoreToWin = 1;
+        
         gameSetup.police = false;
         gameSetup.startMoney = 999999;
         gameSetup.respawnMoney = 999999;
         gameSetup.consumableMoney = 999999;
-        gameSetup.scoreToWin = 999999;
         gameSetup.totalLives = 999999;
-        // gameSetup.gameMode = GameMode.RaceGameMode;
 
         runtimeConfig.Seed = seed;
         Timer.LastConfig = runtimeConfig;

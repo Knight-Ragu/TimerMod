@@ -11,14 +11,20 @@ class RaceGameModeSystem_CrossedFinishLine_Patch
 {
     public unsafe static void Prefix(Frame f, EntityRef playerEntity) // crossed the finish line
     {
-        if (!Timer.crossedFinishLine)
+        if (Timer.currentRace is not RaceInfo race) return;
+
+        if (!race.crossedFinishLine)
         {
-            Timer.crossedFinishLine = true;
+            race.crossedFinishLine = true;
+
             var gameState = f.GetOrAddSingletonPointer<RaceGameState>();
+
+            race.SprintTimes.Add(gameState->timeInCurrentMode);
+
+
             HoverbikeModel? model = null;
 
             var e = f.Get<Player>(playerEntity).controlledEntity;
-
             if (f.Exists(e))
             {
                 e = f.Get<Humanoid>(e).vehicle;
@@ -26,12 +32,6 @@ class RaceGameModeSystem_CrossedFinishLine_Patch
                 if (f.Exists(e))
                     model = f.Get<HoverBike>(e).model;
             }
-
-            
-            // gameState->timeInCurrentMode = gameState->ArenaDurationInTicks((Frame)f) - 5;
-
-            if (gameState->playersNotYetReachedArena != 0)
-                Timer.SprintTimes.Add(Timer.sprintTime);
             
 
             (string directory, string splitsFile) = ReadWrite.GetSplitsFile(SceneManager.GetActiveScene(), model);
@@ -42,8 +42,13 @@ class RaceGameModeSystem_CrossedFinishLine_Patch
             if (!File.Exists(splitsFile))
                 ReadWrite.CreateNewSplitsFile(splitsFile);
             
-            // (double sprintStart, double sprintEnd) = Timer.SprintTimes[^1];
-            var (wroteToSprint, wroteToSum) = ReadWrite.SaveSplitTime(splitsFile, gameState->lastArenaIndex, gameState->timeInCurrentMode, Timer.RaceSumTime());
+            var (wroteToSprint, wroteToSum) = ReadWrite.SaveSplitTime
+            (
+                splitsFile,
+                index: gameState->lastArenaIndex,
+                sprintTime: gameState->timeInCurrentMode,
+                raceTime: Timer.segmentArena is null ? race.RaceSumTime() : long.MaxValue
+            );
             
             Timer.wasFastestSprint = wroteToSprint;
             Timer.wasFastestRaceSum = wroteToSum;
