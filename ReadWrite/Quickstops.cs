@@ -44,8 +44,6 @@ public partial class ReadWrite
                     i++;
                 break;
             }
-
-            Timer.Log.Msg($"{i}: '{line}'");
         }
 
         return quickstops;

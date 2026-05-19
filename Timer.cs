@@ -28,36 +28,17 @@ public partial class Timer : MelonMod
     internal static bool enabled = true;
 
 
-    internal static RaceInfo? currentRace = null;
-    internal static SingleSegment? segmentArena = null;
+    internal static Retry? RetryInfo = null;
+    internal static RuntimeConfig? LastConfig = null;
 
-    internal static bool wasFastestSprint = false;
-    internal static bool wasFastestRaceSum = false;
-
-    internal static Transform3D SpawnPosition = Transform3D.Create();
-
-    internal static Color TextColor(bool best)
-    {
-        if (best)
-        {
-            Color baseCol = Timer.TextBaseColor;
-            float sin = Mathf.Sin((float)Timer.currentRace?.TotalElapsedSeconds * 3.6f) * 0.375f + 0.62f;
-
-            return new Color(baseCol.r * sin, baseCol.g + (1.0f - sin) * 0.25f, baseCol.b * sin);
-        }
-        else
-            return Timer.TextBaseColor;
-    }
+    internal static SingleSegment? Segment = null;
+    internal static RaceInfo CurrentRace = new();
+    internal static LabelManager LabelManager = new();
 
     internal static void Reset()
     {
-        Timer.currentRace = new();
-        Timer.wasFastestSprint = false;
-        Timer.wasFastestRaceSum = false;
-
-        Timer.TrySetupUI = 45;
-        Timer.SprintText = null;
-        Timer.SumText = null;
+        Timer.CurrentRace = new();
+        Timer.Segment = null;
     }
 
     public static void Retry(RetryMethod type, Quickstop[] quickstopToggles = default)
@@ -78,9 +59,23 @@ public partial class Timer : MelonMod
 
     public override void OnUpdate()
     {
+        Timer.LabelManager.Update();
+
         var kbd = UnityEngine.InputSystem.Keyboard.current;
 
         // Keyboard shortcuts
+
+        if (kbd.gKey.wasPressedThisFrame && Timer.LabelManager.TryGetLabel(0, out var l0))
+            l0.PlayAnimation(LabelAnimation.SlowPulse, LabelColor.Green);
+
+        if (kbd.yKey.wasPressedThisFrame && Timer.LabelManager.TryGetLabel(0, out var l1))
+            l1.PlayAnimation(LabelAnimation.SlowPulse, LabelColor.Gold);
+
+        if (kbd.rKey.wasPressedThisFrame && Timer.LabelManager.TryGetLabel(0, out var l2))
+            l2.PlayAnimation(LabelAnimation.QuickFade, LabelColor.Red);
+
+        if (kbd.bKey.wasPressedThisFrame && Timer.LabelManager.TryGetLabel(0, out var l3))
+            l3.PlayAnimation(LabelAnimation.SlowFade, LabelColor.Blue);
 
         if ( // Retry map with quickstop constrained random seed
             Timer.LastConfig is not null

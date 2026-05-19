@@ -10,15 +10,37 @@ using Il2CppQuantum.Physics3D;
 
 namespace TimerMod;
 
+public partial class Timer
+{
+    internal static Transform3D SpawnPosition = Transform3D.Create(FPVector3.Zero);
+}
+
+[HarmonyPatch(typeof(BikeRespawnSystem), nameof(BikeRespawnSystem.SpawnBike))]
+class BikeRespawnSystem_SpawnBike_Patch
+{
+    public static void Prefix(ref Transform3D spawnTransform)
+    {   
+        if (Timer.SpawnPosition.Position != FPVector3.Zero)
+        {
+            spawnTransform = Timer.SpawnPosition;
+            Timer.SpawnPosition.Position = FPVector3.Zero;
+        }
+    }
+}
+
 [HarmonyPatch(typeof(RaceGameModeSystem), nameof(RaceGameModeSystem.ChangeMode))]
 class RaceGameStateExtensions_RaceGameStateExtensions_Patch
 {
-    public unsafe static void Postfix(Frame f, MapConfig mapConfig, RaceGameState* gameState)
+    public unsafe static void Postfix(Frame f, ref MapConfig mapConfig, RaceGameState* gameState)
     {
-        if (Timer.currentRace is not RaceInfo race) return;
+        // f.PhysicsSceneSettings->Gravity = FPVector3.Down * FP._10;
+
+        if (Timer.CurrentRace is not RaceInfo race) return;
 
         race.crossedFinishLine = false;
-        Timer.wasFastestSprint = false;
+
+        if (Timer.LabelManager.TryGetLabel(0, out var l0))
+            l0.PlayAnimation(LabelAnimation.None, LabelColor.White);
 
         Il2CppList refs = new();
         f.GetAllEntityRefs(refs);
@@ -26,36 +48,37 @@ class RaceGameStateExtensions_RaceGameStateExtensions_Patch
         CheckSeedValid(mapConfig, gameState);
         RemoveSystems(f);
         DestroyPathBlockers(f, refs);
-        SetSegmentModeLogic(f, mapConfig, gameState, refs);
+        SingleSegmentModeLogic(f, mapConfig, gameState, refs);
+
+        if (gameState->currArenaType == ArenaType.RaceStart)
+        {
+            if (Timer.Segment is null)
+                Timer.LabelManager.Initialize(1);
+            else
+                Timer.LabelManager.Initialize(0);
+        }
     }
 
-    private unsafe static void SetSegmentModeLogic(Frame f, MapConfig mapConfig, RaceGameState* gameState, Il2CppList refs)
+    private unsafe static void SingleSegmentModeLogic(Frame f, MapConfig mapConfig, RaceGameState* gameState, Il2CppList refs)
     {
         if (gameState->currArenaType == ArenaType.RaceStart)
         {
-            Timer.segmentArena = null;
-            Timer.SpawnPosition.Position = FPVector3.Zero;
+            Timer.Segment = null;
 
             if (ReadWrite.ReadArenaIndex(out int arenaIndex))
             {
-                Timer.segmentArena = SingleSegment.Create(mapConfig, arenaIndex);
-                if (Timer.segmentArena.IsStartingLine()) return;
+                Timer.Segment = SingleSegment.Create(mapConfig, arenaIndex);
+                if (Timer.Segment.IsStartingLine()) return;
 
-                Arena arena = Timer.segmentArena.GetArena();
-
-                Timer.SpawnPosition.Position = arena.startLinePos;
-                Timer.SpawnPosition.Rotation = FPQuaternion.LookRotation(arena.startLineDirection, FPVector3.Up);
-                
-                var a_little_back = Timer.SpawnPosition.Position + Timer.SpawnPosition.Back * (FP._3 + FP._0_50);
+                Arena arena = Timer.Segment.Arena();
+                FPVector3 a_little_back = arena.startLinePos + -arena.startLineDirection.Normalized * (FP._3 + FP._0_50);
 
                 if (Raycasts.StaticTerrainLineCast(f, a_little_back, a_little_back + FPVector3.Down * FP._100, out Hit3D rayHit))
-                {
                     Timer.SpawnPosition.Position = rayHit.Point + rayHit.Normal * FP._0_20;
-                }
                 else
-                {
                     Timer.SpawnPosition.Position = a_little_back;
-                }
+                
+                Timer.SpawnPosition.Rotation = FPQuaternion.LookRotation(arena.startLineDirection);
             }
         }
     }

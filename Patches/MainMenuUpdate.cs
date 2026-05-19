@@ -11,9 +11,6 @@ namespace TimerMod;
 public partial class Timer
 {
     internal static Toggle? UiToggle;
-    
-    internal static Retry? RetryInfo = null;
-    internal static RuntimeConfig? LastConfig = null;
 }
 
 [HarmonyPatch(typeof(AirframeMainMenu), nameof(AirframeMainMenu.Update))]
@@ -21,6 +18,8 @@ static class AirframeMainMenu_Update_Patch
 {
     public static void Postfix()
     {
+        Timer.Reset();
+
         if (Timer.UiToggle == null)
         {
             if (GameObject.Find("SettingsScrollview") is GameObject gameObj)

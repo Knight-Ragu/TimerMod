@@ -6,12 +6,12 @@ namespace TimerMod;
 public class SingleSegment(Il2CppStructArray<Arena> arenas, int arenaIndex)
 {
     public readonly Il2CppStructArray<Arena> Arenas = arenas;
+    public int StartingLine;
     private readonly int index = arenaIndex;
-    private int startArenaIndex;
 
-    public int GetArenaIndex(int offset = 0)
+    public int ArenaIndex(int offset = 0)
     {
-        int index = this.index + startArenaIndex + offset;
+        int index = this.index + StartingLine + offset;
 
         while (index < 0)
             index += Arenas.Length;
@@ -19,11 +19,11 @@ public class SingleSegment(Il2CppStructArray<Arena> arenas, int arenaIndex)
         return index % Arenas.Length;
     }
 
-    public Arena GetArena()
-        => Arenas[this.GetArenaIndex()];
+    public Arena Arena()
+        => Arenas[this.ArenaIndex()];
     
     public bool IsStartingLine()
-        => GetArenaIndex() == startArenaIndex;
+        => ArenaIndex() == StartingLine;
 
 
     public static SingleSegment Create(MapConfig mapConfig, int arenaIndex)
@@ -33,7 +33,7 @@ public class SingleSegment(Il2CppStructArray<Arena> arenas, int arenaIndex)
         for (int i = 0; i < mapConfig.arenas.Length; i++)
             if (mapConfig.arenas[i].arenaType == ArenaType.RaceStart)
             {
-                currArena.startArenaIndex = i;
+                currArena.StartingLine = i;
                 break;
             }
         

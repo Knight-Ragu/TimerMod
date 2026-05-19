@@ -11,7 +11,7 @@ class RaceGameModeSystem_CrossedFinishLine_Patch
 {
     public unsafe static void Prefix(Frame f, EntityRef playerEntity) // crossed the finish line
     {
-        if (Timer.currentRace is not RaceInfo race) return;
+        if (Timer.CurrentRace is not RaceInfo race) return;
 
         if (!race.crossedFinishLine)
         {
@@ -47,11 +47,14 @@ class RaceGameModeSystem_CrossedFinishLine_Patch
                 splitsFile,
                 index: gameState->lastArenaIndex,
                 sprintTime: gameState->timeInCurrentMode,
-                raceTime: Timer.segmentArena is null ? race.RaceSumTime() : long.MaxValue
+                raceTime: Timer.Segment is null ? race.RaceSumTime() : long.MaxValue
             );
             
-            Timer.wasFastestSprint = wroteToSprint;
-            Timer.wasFastestRaceSum = wroteToSum;
+            if (wroteToSprint && Timer.LabelManager.TryGetLabel(0, out var l0))
+                l0.PlayAnimation(LabelAnimation.SlowPulse, LabelColor.Green);
+
+            if (wroteToSum && Timer.LabelManager.TryGetLabel(1, out var l1))
+                l1.PlayAnimation(LabelAnimation.SlowPulse, LabelColor.Green);
         }
         else Timer.Log.Msg("Already Crossed Finish Line!");
     }
