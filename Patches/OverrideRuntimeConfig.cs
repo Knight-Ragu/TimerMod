@@ -29,7 +29,7 @@ class PhotonController_ChangeSceneAndStartQuantumGameCoroutine_Patch
 
             if (
                 retry.Type != RetryMethod.InfiniteRandomSeed
-             && retry.Type != RetryMethod.RandomQuickstopSeed
+             && retry.Type != RetryMethod.RandomSetQuickstopsSeed
             ) {
                 Timer.RetryInfo = null;
             } else { 

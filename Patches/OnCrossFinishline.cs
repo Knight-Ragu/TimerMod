@@ -1,8 +1,6 @@
-using System.IO;
 using HarmonyLib;
 using Il2CppQuantum;
 using Il2CppQuantum_Game;
-using UnityEngine.SceneManagement;
 
 namespace TimerMod;
 
@@ -17,14 +15,14 @@ class RaceGameModeSystem_CrossedFinishLine_Patch
         {
             race.crossedFinishLine = true;
 
-            var gameState = f.GetOrAddSingletonPointer<RaceGameState>();
+            RaceGameState* gameState = f.GetOrAddSingletonPointer<RaceGameState>();
 
             race.SprintTimes.Add(gameState->timeInCurrentMode);
 
 
             HoverbikeModel? model = null;
 
-            var e = f.Get<Player>(playerEntity).controlledEntity;
+            EntityRef e = f.Get<Player>(playerEntity).controlledEntity;
             if (f.Exists(e))
             {
                 e = f.Get<Humanoid>(e).vehicle;
@@ -33,28 +31,15 @@ class RaceGameModeSystem_CrossedFinishLine_Patch
                     model = f.Get<HoverBike>(e).model;
             }
             
-
-            (string directory, string splitsFile) = ReadWrite.GetSplitsFile(SceneManager.GetActiveScene(), model);
-
-            if (!Directory.Exists(directory))
-                Directory.CreateDirectory(directory);
-
-            if (!File.Exists(splitsFile))
-                ReadWrite.CreateNewSplitsFile(splitsFile);
+            string splitsFile = ReadWrite.GetSingleSegmentFilePath(f.Map.Scene, model ?? race.BikeModel);
+            var wroteToFile = ReadWrite.SaveSingleSegmentTimeIfFaster(splitsFile, Timer.Segment, gameState);
+            // raceTime: Timer.Segment is null ? race.RaceSumTime() : long.MaxValue
             
-            var (wroteToSprint, wroteToSum) = ReadWrite.SaveSplitTime
-            (
-                splitsFile,
-                index: gameState->lastArenaIndex,
-                sprintTime: gameState->timeInCurrentMode,
-                raceTime: Timer.Segment is null ? race.RaceSumTime() : long.MaxValue
-            );
-            
-            if (wroteToSprint && Timer.LabelManager.TryGetLabel(0, out var l0))
+            if (wroteToFile && Timer.LabelManager.TryGetLabel(0, out var l0))
                 l0.PlayAnimation(LabelAnimation.SlowPulse, LabelColor.Green);
 
-            if (wroteToSum && Timer.LabelManager.TryGetLabel(1, out var l1))
-                l1.PlayAnimation(LabelAnimation.SlowPulse, LabelColor.Green);
+            // if (wroteToSum && Timer.LabelManager.TryGetLabel(1, out var l1))
+            //     l1.PlayAnimation(LabelAnimation.SlowPulse, LabelColor.Green);
         }
         else Timer.Log.Msg("Already Crossed Finish Line!");
     }

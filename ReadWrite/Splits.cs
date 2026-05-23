@@ -1,15 +1,12 @@
+using System;
 using System.IO;
 using Il2CppQuantum;
-using UnityEngine.SceneManagement;
 
 namespace TimerMod;
 
 public partial class ReadWrite
 {
-    internal static void CreateNewSplitsFile(string splitsFile)
-        => File.WriteAllLines(splitsFile, ["-|-", "-|-", "-|-", "-|-", "-|-", "-|-", "-|-", "-|-"]);
-
-    internal static (string directory, string file) GetSplitsFile(Scene map, HoverbikeModel? bikeModel)
+    internal static string BikeModelName(HoverbikeModel? bikeModel)
     {
         string model;
 
@@ -17,15 +14,79 @@ public partial class ReadWrite
             model = System.Enum.GetName(bikeModel.Value);
         else
             model = "Nobike";
-
-        string splitsFolderName = $"\\{map.name}";
-        string splitsFileName = $"\\{model}";
-
-        return (Timer.TimesFolder + splitsFolderName, Timer.TimesFolder + splitsFolderName + splitsFileName);
+        
+        return model;
     }
 
-    internal static (bool wroteToSprint, bool wroteToSum) SaveSplitTime(string splitsFile, int index, long sprintTime, long raceTime)
+    internal static void CreateNewSplitsFile(string splitsFile, string mapName, HoverbikeModel? bikeModel)
+        => File.WriteAllLines(splitsFile, [$"// {BikeModelName(bikeModel)} - {mapName}"]);
+
+    internal static string GetSingleSegmentFilePath(string mapName, HoverbikeModel? bikeModel)
     {
+        string splitsFolderName = $"\\{mapName}";
+        string splitsFileName = $"\\{BikeModelName(bikeModel)}";
+
+        string splitsFilePath = Timer.TimesFolder + splitsFolderName + splitsFileName;
+
+        if (!Directory.Exists(Timer.TimesFolder + splitsFolderName))
+                Directory.CreateDirectory(Timer.TimesFolder + splitsFolderName);
+
+        if (!File.Exists(splitsFilePath))
+            ReadWrite.CreateNewSplitsFile(splitsFilePath, mapName, bikeModel);
+
+        return splitsFilePath;
+    }
+
+    internal static unsafe bool SaveSingleSegmentTimeIfFaster(string splitsFile, SingleSegment segment, RaceGameState* gameState)
+    {
+        string segmentID = $"{gameState->lastArenaIndex}-{gameState->currArenaIndex}";
+        Timer .Log.Msg($"segmentID: {segmentID}"); 
+
+        string[] times = File.ReadAllLines(splitsFile);
+
+        int lineToEdit = 64;
+        bool wroteToFile = true;
+
+        for (int i = 0; i < times.Length; i++)
+        {
+            var split = times[i].Split('|');
+            if (split[0] == segmentID)
+            {
+                lineToEdit = i;
+                break;
+            }
+        }
+
+        if (lineToEdit == 64) // Grow Array
+        { 
+            lineToEdit = times.Length;
+            
+            Array.Resize(ref times, times.Length + 1);
+            times[lineToEdit] = "";
+        }
+
+
+        long sprintTime = gameState->timeInCurrentMode;
+
+        var line = times[lineToEdit].Split('|');
+        if (line.Length >= 2 && long.TryParse(line[1], out var savedSprintTime))
+        {
+            sprintTime = Math.Min(sprintTime, savedSprintTime);
+            if (sprintTime >= savedSprintTime) wroteToFile = false;
+        }
+        
+        times[lineToEdit] = $"{segmentID}|{sprintTime}";
+        File.WriteAllLines(splitsFile, times);
+        
+        return wroteToFile;
+    }
+
+    internal static unsafe (bool wroteToSprint, bool wroteToSum) SaveRaceTimeIfFaster(string splitsFile, RaceGameState* gameState, RaceInfo currentRace)
+    {
+        int index = gameState->lastArenaIndex;
+        long sprintTime = gameState->timeInCurrentMode;
+        long raceTime = currentRace.RaceSumTime();
+
         var times = File.ReadAllLines(splitsFile);
 
         { // Resize Array

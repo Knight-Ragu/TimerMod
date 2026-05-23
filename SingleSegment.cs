@@ -19,8 +19,8 @@ public class SingleSegment(Il2CppStructArray<Arena> arenas, int arenaIndex)
         return index % Arenas.Length;
     }
 
-    public Arena Arena()
-        => Arenas[this.ArenaIndex()];
+    public Arena Arena(int offset = 0)
+        => Arenas[this.ArenaIndex(offset)];
     
     public bool IsStartingLine()
         => ArenaIndex() == StartingLine;

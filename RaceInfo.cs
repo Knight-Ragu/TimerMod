@@ -1,15 +1,17 @@
 using System.Collections.Generic;
+using Il2CppQuantum;
 
 namespace TimerMod;
 
 public class RaceInfo()
 {
-    internal double TotalElapsedSeconds => (double)totalElapsedTime / 45.0;
-    internal long totalElapsedTime = 0;
+    public HoverbikeModel? BikeModel = null;
+    public double TotalElapsedSeconds => (double)totalElapsedTime / 45.0;
+    public long totalElapsedTime = 0;
 
-    internal List<long> SprintTimes = [];
+    public List<long> SprintTimes = [];
 
-    internal bool crossedFinishLine = false;
+    public bool crossedFinishLine = false;
 
     internal long RaceSumTime()
     {

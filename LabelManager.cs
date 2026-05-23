@@ -51,7 +51,7 @@ public class LabelManager
             return;
         }
 
-        // ui.transform.localPosition = new(-272.3645f, 257.8108f, 0.0f);
+        timerUI.transform.localPosition = new(-272.3645f, 257.8108f, 0.0f);
 
         foreach (var label in Labels)
             label.Update();

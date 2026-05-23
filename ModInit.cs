@@ -13,6 +13,6 @@ public partial class Timer
             Directory.CreateDirectory(Timer.TimesFolder);
         
         if (!File.Exists(Timer.SeedFile))
-            File.WriteAllText(Timer.SeedFile, "-");
+            ReadWrite.CreateNewSeedFile(Timer.SeedFile);
     }
 }

@@ -1,10 +1,10 @@
-﻿using System.Collections.Generic;
-using MelonLoader;
+﻿using MelonLoader;
 using UnityEngine;
 using MelonLoader.Utils;
 using Il2Cpp;
 using System.IO;
 using Il2CppQuantum;
+using Il2CppTools_LevelData;
 
 [assembly: MelonInfo(typeof(TimerMod.Timer), "TimerMod", "0.0.1", "Knight-Ragu", null)]
 [assembly: MelonGame("Videocult", "Airframe")]
@@ -86,7 +86,7 @@ public partial class Timer : MelonMod
             if (!File.Exists(Timer.QuickstopsFile))
                 ReadWrite.CreateNewQuickstopsFile(Timer.QuickstopsFile);
 
-            Timer.Retry(RetryMethod.RandomQuickstopSeed, ReadWrite.ReadQuickstopsFile());
+            Timer.Retry(RetryMethod.RandomSetQuickstopsSeed, ReadWrite.ReadQuickstopsFile());
             return;
         }
 

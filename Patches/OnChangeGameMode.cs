@@ -4,7 +4,6 @@ using Il2Cpp;
 using Il2CppQuantum;
 using Il2CppQuantum_Game;
 using Il2CppList = Il2CppSystem.Collections.Generic.List<Il2CppQuantum.EntityRef>;
-using System.Linq;
 using Il2CppPhoton.Deterministic;
 using Il2CppQuantum.Physics3D;
 
@@ -18,12 +17,21 @@ public partial class Timer
 [HarmonyPatch(typeof(BikeRespawnSystem), nameof(BikeRespawnSystem.SpawnBike))]
 class BikeRespawnSystem_SpawnBike_Patch
 {
-    public static void Prefix(ref Transform3D spawnTransform)
+    public static void Prefix(Frame f, EntityRef playerEntity, ref Transform3D spawnTransform)
     {   
         if (Timer.SpawnPosition.Position != FPVector3.Zero)
         {
             spawnTransform = Timer.SpawnPosition;
             Timer.SpawnPosition.Position = FPVector3.Zero;
+        }
+
+        var e = f.Get<Player>(playerEntity).controlledEntity;
+        if (f.Exists(e))
+        {
+            e = f.Get<Humanoid>(e).vehicle;
+
+            if (f.Exists(e))
+                Timer.CurrentRace.BikeModel = f.Get<HoverBike>(e).model;
         }
     }
 }
@@ -31,7 +39,7 @@ class BikeRespawnSystem_SpawnBike_Patch
 [HarmonyPatch(typeof(RaceGameModeSystem), nameof(RaceGameModeSystem.ChangeMode))]
 class RaceGameStateExtensions_RaceGameStateExtensions_Patch
 {
-    public unsafe static void Postfix(Frame f, ref MapConfig mapConfig, RaceGameState* gameState)
+    public unsafe static void Postfix(Frame f, MapConfig mapConfig, RaceGameState* gameState)
     {
         // f.PhysicsSceneSettings->Gravity = FPVector3.Down * FP._10;
 
@@ -42,13 +50,13 @@ class RaceGameStateExtensions_RaceGameStateExtensions_Patch
         if (Timer.LabelManager.TryGetLabel(0, out var l0))
             l0.PlayAnimation(LabelAnimation.None, LabelColor.White);
 
-        Il2CppList refs = new();
-        f.GetAllEntityRefs(refs);
+        Il2CppList eRefs = new();
+        f.GetAllEntityRefs(eRefs);
 
         CheckSeedValid(mapConfig, gameState);
         RemoveSystems(f);
-        DestroyPathBlockers(f, refs);
-        SingleSegmentModeLogic(f, mapConfig, gameState, refs);
+        DestroyPathBlockers(f, eRefs);
+        SingleSegmentModeLogic(f, mapConfig, gameState);
 
         if (gameState->currArenaType == ArenaType.RaceStart)
         {
@@ -59,7 +67,7 @@ class RaceGameStateExtensions_RaceGameStateExtensions_Patch
         }
     }
 
-    private unsafe static void SingleSegmentModeLogic(Frame f, MapConfig mapConfig, RaceGameState* gameState, Il2CppList refs)
+    private unsafe static void SingleSegmentModeLogic(Frame f, MapConfig mapConfig, RaceGameState* gameState)
     {
         if (gameState->currArenaType == ArenaType.RaceStart)
         {
@@ -89,27 +97,35 @@ class RaceGameStateExtensions_RaceGameStateExtensions_Patch
 
         if (
             retry.Type != RetryMethod.InfiniteRandomSeed
-         && retry.Type != RetryMethod.RandomQuickstopSeed
+         && retry.Type != RetryMethod.RandomSetQuickstopsSeed
         ) return;
-
-        // If all arenas are not quickstops / guaranteed quickstops, abort
-        if (mapConfig.arenas.All((a) => a.arenaType != ArenaType.QuickStop || a.quickStopChance == FP._1)) {
-            Timer.RetryInfo = null;
-            return;
-        }
 
         // Check to see if quickstops are going to happen in the current map
 
         bool quickstopsCorrect = true;
 
-        for (int i = 0; i < gameState->quickStopArenaToggles.Length; i++)
+        for (int i = 0; i < mapConfig.arenas.Length; i++)
         {
-            Timer.Log.Msg($"{gameState->quickStopArenaToggles.GetPointer(i)->Value}: {retry.QuickstopToggles[i]}");
+            var quickstopToggle = gameState->quickStopArenaToggles.GetPointer(i)->Value;
+            Timer .Log.Msg($"msg1");
+            Arena arena = mapConfig.arenas[i];
+            Timer .Log.Msg($"msg2");
+            if (
+                retry.QuickstopToggles[i] == Quickstop.Any
+             || arena.arenaType != ArenaType.QuickStop
+             || arena.quickStopChance == FP._1
+            ) 
+                continue;
+            
+            Timer .Log.Msg($"msg3");
+            
+            Timer.Log.Msg($"{quickstopToggle}: {retry.QuickstopToggles[i]}");
 
-            if (retry.QuickstopToggles[i] == Quickstop.Ignore) continue;
+            Timer .Log.Msg($"msg4");
 
-            if (gameState->quickStopArenaToggles.GetPointer(i)->Value != (int)retry.QuickstopToggles[i])
+            if (quickstopToggle != (int)retry.QuickstopToggles[i])
             {
+                Timer .Log.Msg($"msg5");
                 quickstopsCorrect = false;
                 break;
             }
@@ -117,19 +133,24 @@ class RaceGameStateExtensions_RaceGameStateExtensions_Patch
 
         if (quickstopsCorrect)
         {
-            if (retry.Type != RetryMethod.InfiniteRandomSeed)
-                File.WriteAllLines($"{Timer.SeedsFolder}\\{retry.Seed}", []);
+            Timer.Log.Msg($"{retry.Seed} - Valid!");
+
+            if (retry.Type == RetryMethod.InfiniteRandomSeed)
+            {
+                // File.WriteAllLines($"{Timer.SeedsFolder}\\{retry.Seed}", []);
+                PhotonController.instance.LeaveRoom();
+
+                return;
+            }
 
             Timer.RetryInfo = null;
-
-            Timer.Log.Msg($"{retry.Seed} - Valid!");
         }
         else
         {
             // Go to Main Menu and Permeate the cycle
-            PhotonController.instance.LeaveRoom();
-
             Timer.Log.Msg($"{retry.Seed} - Invalid,");
+
+            PhotonController.instance.LeaveRoom();
         }
 
         // Convert.ToString(256, 2)
@@ -163,11 +184,11 @@ class RaceGameStateExtensions_RaceGameStateExtensions_Patch
         }
     }
 
-    private static void DestroyPathBlockers(Frame f, Il2CppList refs)
+    private static void DestroyPathBlockers(Frame f, Il2CppList eRefs)
     {
         if (!Timer.enabled) return;
 
-        foreach (var entity in refs)
+        foreach (var entity in eRefs)
             if (f.Has<PathBlocker>(entity))
                 f.Destroy(entity);
             

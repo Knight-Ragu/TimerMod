@@ -4,14 +4,14 @@ public class Retry()
 {
     public RetryMethod Type = RetryMethod.SameSeed;
     public Quickstop[] QuickstopToggles = [
-        Quickstop.Ignore,
-        Quickstop.Ignore,
+        Quickstop.Any,
+        Quickstop.Any,
         Quickstop.Enable,
-        Quickstop.Ignore,
+        Quickstop.Any,
         Quickstop.Enable,
-        Quickstop.Ignore,
-        Quickstop.Ignore,
-        Quickstop.Ignore
+        Quickstop.Any,
+        Quickstop.Any,
+        Quickstop.Any
     ];
 
     internal int Seed = 0;
@@ -21,11 +21,11 @@ public enum RetryMethod {
     SameSeed,
     RandomSeed,
     InfiniteRandomSeed,
-    RandomQuickstopSeed,
+    RandomSetQuickstopsSeed,
 }
 
 public enum Quickstop {
+    Any = -1,
     Enable = 1,
     Disable = 0,
-    Ignore = -1,
 }
